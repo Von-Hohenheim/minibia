@@ -12873,32 +12873,6 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
           </div>
 
 
-          <div class="mc-section">
-            <div class="mc-label">Magic Wall Timer</div>
-            <div class="mc-stack">
-              <label class="mc-toggle">
-                <input type="checkbox" id="minibia-copilot-magic-wall-enabled" />
-                <span>Show on-screen MW timer</span>
-              </label>
-              <label class="mc-toggle">
-                <input type="checkbox" id="minibia-copilot-magic-wall-audio" />
-                <span>Alarm at lead time</span>
-              </label>
-              <div class="mc-field-grid">
-                <label class="mc-field" for="minibia-copilot-magic-wall-duration">
-                  <span class="mc-field-label">Duration (s)</span>
-                  <input type="number" id="minibia-copilot-magic-wall-duration" min="1" max="120" placeholder="20" />
-                </label>
-                <label class="mc-field" for="minibia-copilot-magic-wall-lead">
-                  <span class="mc-field-label">Lead (s)</span>
-                  <input type="number" id="minibia-copilot-magic-wall-lead" min="0" max="20" placeholder="3" />
-                </label>
-              </div>
-              <div class="mc-small-note" id="minibia-copilot-magic-wall-status">Status: idle</div>
-            </div>
-          </div>
-
-
         </div>
 
 
