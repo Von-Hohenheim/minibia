@@ -116,7 +116,7 @@
     currentBundle.installAlphaWatchModule(bot);
     currentBundle.installFightEstimatorModule(bot);
     currentBundle.installLootbagModule(bot);
-	currentBundle.installAntiBotModule(bot);
+	  currentBundle.installAntiBotModule(bot);
     currentBundle.installPanel(bot);
 
     bot.ui.inject();

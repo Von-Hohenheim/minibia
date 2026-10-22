@@ -1,8 +1,7 @@
 
 window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
-window.__minibiaCopilotBundle.installAntiBotModule =
-  function installAntiBotModule(bot) {
+window.__minibiaCopilotBundle.installAntiBotModule = function installAntiBotModule(bot) {
     const TARGET = "anti-bot rune check";
     const COOLDOWN_MS = 5000;
 
