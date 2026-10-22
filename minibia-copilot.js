@@ -12694,16 +12694,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
             <div class="mc-stat"><span class="mc-stat-label">Lvl</span><span class="mc-stat-value" data-tone="lvl" id="minibia-copilot-snapshot-level">—</span></div>
           </div>
           </div>
-
-          <div class="mc-section">
-            <div class="mc-label">Alpha Watch</div>
-            <div class="mc-stack">
-              <label class="mc-toggle">
-                <input type="checkbox" id="minibia-copilot-alpha-watch-enabled" />
-                <span>Toast on Alpha sightings</span>
-              </label>
-              <div class="mc-small-note" id="minibia-copilot-alpha-watch-status">Status: idle</div>
-            </div>
+ 
           </div>
 
           <div class="mc-section">
