@@ -12667,7 +12667,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     panel.id = "minibia-copilot-panel";
     panel.innerHTML = `
       <div class="mc-titlebar">
-        <div class="mc-title">Minibia <span class="mc-title-accent">Heim V1.1</span></div>
+        <div class="mc-title">Minibia <span class="mc-title-accent">Heim</span></div>
         <div class="mc-titlebar-actions">
           <button type="button" class="mc-icon-button" id="minibia-copilot-pause-toggle" aria-label="Pausa el Bot" title="Pause all bot actions">⏸</button>
           <button type="button" class="mc-icon-button" id="minibia-copilot-reload" aria-label="Recargar bot" title="Reload bot">⟳</button>
@@ -12678,11 +12678,11 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
         <img src="https://minibia.com/png/minibia-mascot.png" alt="Minibia" referrerpolicy="no-referrer" onerror="this.parentElement.hidden=true" />
       </div>
       <div class="mc-tabs" id="minibia-copilot-tabs">
-        <button type="button" class="mc-tab-button" data-tab="status"><span class="mc-tab-icon">⚡</span><span>Estado</span></button>
-        <button type="button" class="mc-tab-button" data-tab="combat"><span class="mc-tab-icon">⚔</span><span>Combate</span></button>
-        <button type="button" class="mc-tab-button" data-tab="survival"><span class="mc-tab-icon">❤</span><span>Supervivencia</span></button>
-        <button type="button" class="mc-tab-button" data-tab="utility"><span class="mc-tab-icon">⚙</span><span>Utilidad</span></button>
-        <button type="button" class="mc-tab-button" data-tab="safely"><span class="mc-tab-icon">⚙</span><span>Seguridad</span></button>
+        <button type="button" class="mc-tab-button" data-tab="status"><span class="mc-tab-icon">⚡</span><span>Status</span></button>
+        <button type="button" class="mc-tab-button" data-tab="combat"><span class="mc-tab-icon">⚔</span><span>Combat</span></button>
+        <button type="button" class="mc-tab-button" data-tab="survival"><span class="mc-tab-icon">❤</span><span>Survival</span></button>
+        <button type="button" class="mc-tab-button" data-tab="utility"><span class="mc-tab-icon">⚙</span><span>Utility</span></button>
+        <button type="button" class="mc-tab-button" data-tab="safely"><span class="mc-tab-icon">⚙</span><span>Safely</span></button>
       </div>
 
       <div class="mc-body">
