@@ -12799,18 +12799,6 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
           </div>
 
           <div class="mc-section">
-            <div class="mc-label">Auto Eat</div>
-            <label class="mc-toggle">
-              <input type="checkbox" id="minibia-copilot-auto-eat-enabled" />
-              <span>Enable Auto Eat</span>
-            </label>
-            <label class="mc-field" for="minibia-copilot-auto-eat-hotkey">
-              <span class="mc-field-label">Eat Hotkey (1-12)</span>
-              <input type="number" id="minibia-copilot-auto-eat-hotkey" min="1" max="12" placeholder="10" />
-            </label>
-          </div>
-
-          <div class="mc-section">
             <div class="mc-label">Equip Ring</div>
             <div class="mc-stack">
               <label class="mc-toggle">
@@ -12987,25 +12975,19 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
           </div>
 
           <div class="mc-section">
-            <div class="mc-label">Talk (Chat AI)</div>
-            <div class="mc-stack">
-              <label class="mc-toggle">
-                <input type="checkbox" id="minibia-copilot-talk-enabled" />
-                <span>Enable Auto Reply</span>
-              </label>
-              <label class="mc-field" for="minibia-copilot-talk-api-key">
-                <span class="mc-field-label">Gemini API key</span>
-                <input type="password" id="minibia-copilot-talk-api-key" placeholder="paste key" />
-              </label>
-              <label class="mc-field" for="minibia-copilot-talk-prompt">
-                <span class="mc-field-label">Reply style prompt</span>
-                <textarea id="minibia-copilot-talk-prompt" placeholder="e.g. terse, in-character"></textarea>
-              </label>
-              <div class="mc-small-note" id="minibia-copilot-talk-status">Status: idle</div>
-              <div class="mc-small-note">Replies only to the newest unseen message in Default chat. Won't admit it is a bot.</div>
-            </div>
+            <div class="mc-label">Auto Eat</div>
+            <label class="mc-toggle">
+              <input type="checkbox" id="minibia-copilot-auto-eat-enabled" />
+              <span>Enable Auto Eat</span>
+            </label>
+            <label class="mc-field" for="minibia-copilot-auto-eat-hotkey">
+              <span class="mc-field-label">Eat Hotkey (1-12)</span>
+              <input type="number" id="minibia-copilot-auto-eat-hotkey" min="1" max="12" placeholder="10" />
+            </label>
           </div>
+      
         </div>
+
 
 
 
