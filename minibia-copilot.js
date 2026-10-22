@@ -12693,12 +12693,6 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
             <div class="mc-stat"><span class="mc-stat-label">Mana</span><span class="mc-stat-value" data-tone="mana" id="minibia-copilot-snapshot-mana">—</span></div>
             <div class="mc-stat"><span class="mc-stat-label">Lvl</span><span class="mc-stat-value" data-tone="lvl" id="minibia-copilot-snapshot-level">—</span></div>
           </div>
-          <div class="mc-section">
-            <div class="mc-label">Fight Estimator</div>
-            <div class="mc-stack">
-              <button type="button" class="mc-small-button" id="minibia-copilot-fight-open">⚔ Open Monster Matchup</button>
-              <div class="mc-small-note">Pulls /api/library and predicts who wins between two monsters.</div>
-            </div>
           </div>
 
           <div class="mc-section">
