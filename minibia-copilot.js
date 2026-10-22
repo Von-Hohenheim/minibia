@@ -12685,8 +12685,8 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
         <button type="button" class="mc-tab-button" data-tab="utility"><span class="mc-tab-icon">⚙</span><span>Utility</span></button>
         <button type="button" class="mc-tab-button" data-tab="deaths"><span class="mc-tab-icon">☠</span><span>Deaths</span></button>
       </div>
-      <div class="mc-body">
 
+      <div class="mc-body">
         <div class="mc-tab-pane" data-tab="status" hidden>
          
           <div class="mc-snapshot" id="minibia-copilot-snapshot">
@@ -12694,14 +12694,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
             <div class="mc-stat"><span class="mc-stat-label">Mana</span><span class="mc-stat-value" data-tone="mana" id="minibia-copilot-snapshot-mana">—</span></div>
             <div class="mc-stat"><span class="mc-stat-label">Lvl</span><span class="mc-stat-value" data-tone="lvl" id="minibia-copilot-snapshot-level">—</span></div>
          
-          </div>
-          
-          </div>
- 
-
-          <div class="mc-section">
-            </div>
-
+              
           </div>
 
           <div class="mc-section">
