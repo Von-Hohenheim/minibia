@@ -12910,24 +12910,24 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
 
         <div class="mc-tab-pane" data-tab="safely" hidden>
           <div class="mc-section">
-            <div class="mc-label" id="minibia-copilot-home">Panic Runner Home: not set</div>
+            <div class="mc-label" id="minibia-copilot-home">Lugar Seguro: no asignado</div>
             <div class="mc-stack">
-              <button type="button" id="minibia-copilot-set-home">Set Home (current tile)</button>
+              <button type="button" id="minibia-copilot-set-home">Asignar Lugar Seguro</button>
               <label class="mc-toggle">
                 <input type="checkbox" id="minibia-copilot-panic-unknown" />
-                <span>Trigger on unknown player</span>
+                <span>Activar con jugador desconocido.</span>
               </label>
               <label class="mc-toggle">
                 <input type="checkbox" id="minibia-copilot-panic-health" />
-                <span>Trigger on health loss</span>
+                <span>Activar al perder vida.</span>
               </label>
               <label class="mc-toggle">
                 <input type="checkbox" id="minibia-copilot-panic-return" />
-                <span>Auto return after threat</span>
+                <span>Regreso automatico.</span>
               </label>
-              <div class="mc-field-label">Trusted names</div>
+              <div class="mc-field-label">Jugadores Conocidos</div>
               <div class="mc-inline">
-                <input type="text" id="minibia-copilot-panic-trusted-input" placeholder="Add name" />
+                <input type="text" id="minibia-copilot-panic-trusted-input" placeholder="Agregar Nombre" />
                 <button type="button" class="mc-small-button" id="minibia-copilot-panic-trusted-add">Add</button>
               </div>
               <div class="mc-list" id="minibia-copilot-panic-trusted-list"></div>
@@ -12935,10 +12935,10 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
           </div>
 
           <div class="mc-section">
-            <div class="mc-label">GM Kill Switch</div>
+            <div class="mc-label">Alerta de GM</div>
             <div class="mc-stack">
               <div class="mc-inline">
-                <input type="text" id="minibia-copilot-panic-gm-input" placeholder="Game master name" />
+                <input type="text" id="minibia-copilot-panic-gm-input" placeholder="Agregar Nombre Gm o God" />
                 <button type="button" class="mc-small-button" id="minibia-copilot-panic-gm-add">Add</button>
               </div>
               <div class="mc-list" id="minibia-copilot-panic-gm-list"></div>
