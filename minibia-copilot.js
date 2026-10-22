@@ -12905,11 +12905,11 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     panel.id = "minibia-copilot-panel";
     panel.innerHTML = `
       <div class="mc-titlebar">
-        <div class="mc-title">Minibia <span class="mc-title-accent">Copilot</span></div>
+        <div class="mc-title">Minibia <span class="mc-title-accent">Heim</span></div>
         <div class="mc-titlebar-actions">
-          <button type="button" class="mc-icon-button" id="minibia-copilot-pause-toggle" aria-label="Pause all bot actions" title="Pause all bot actions">⏸</button>
-          <button type="button" class="mc-icon-button" id="minibia-copilot-reload" aria-label="Reload bot" title="Reload bot">⟳</button>
-          <button type="button" class="mc-icon-button" id="minibia-copilot-collapse" aria-label="Minimize panel" title="Minimize">−</button>
+          <button type="button" class="mc-icon-button" id="minibia-copilot-pause-toggle" aria-label="Pausa el Bot" title="Pause all bot actions">⏸</button>
+          <button type="button" class="mc-icon-button" id="minibia-copilot-reload" aria-label="Recargar bot" title="Reload bot">⟳</button>
+          <button type="button" class="mc-icon-button" id="minibia-copilot-collapse" aria-label="Minimizar panel" title="Minimize">−</button>
         </div>
       </div>
       <div class="mc-hero" id="minibia-copilot-hero">
@@ -12919,66 +12919,20 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
         <button type="button" class="mc-tab-button" data-tab="status"><span class="mc-tab-icon">⚡</span><span>Status</span></button>
         <button type="button" class="mc-tab-button" data-tab="combat"><span class="mc-tab-icon">⚔</span><span>Combat</span></button>
         <button type="button" class="mc-tab-button" data-tab="survival"><span class="mc-tab-icon">❤</span><span>Survival</span></button>
-        <button type="button" class="mc-tab-button" data-tab="navigation"><span class="mc-tab-icon">🗺</span><span>Navigate</span></button>
         <button type="button" class="mc-tab-button" data-tab="utility"><span class="mc-tab-icon">⚙</span><span>Utility</span></button>
-        <button type="button" class="mc-tab-button" data-tab="deaths"><span class="mc-tab-icon">☠</span><span>Deaths</span></button>
+        <button type="button" class="mc-tab-button" data-tab="safely"><span class="mc-tab-icon">⚙</span><span>Safely</span></button>
       </div>
+
       <div class="mc-body">
 
         <div class="mc-tab-pane" data-tab="status" hidden>
+         
           <div class="mc-snapshot" id="minibia-copilot-snapshot">
             <div class="mc-stat"><span class="mc-stat-label">HP</span><span class="mc-stat-value" data-tone="hp" id="minibia-copilot-snapshot-hp">—</span></div>
             <div class="mc-stat"><span class="mc-stat-label">Mana</span><span class="mc-stat-value" data-tone="mana" id="minibia-copilot-snapshot-mana">—</span></div>
             <div class="mc-stat"><span class="mc-stat-label">Lvl</span><span class="mc-stat-value" data-tone="lvl" id="minibia-copilot-snapshot-level">—</span></div>
           </div>
-          <div class="mc-section">
-            <div class="mc-label">Fight Estimator</div>
-            <div class="mc-stack">
-              <button type="button" class="mc-small-button" id="minibia-copilot-fight-open">⚔ Open Monster Matchup</button>
-              <div class="mc-small-note">Pulls /api/library and predicts who wins between two monsters.</div>
-            </div>
-          </div>
 
-          <div class="mc-section">
-            <div class="mc-label">Alpha Watch</div>
-            <div class="mc-stack">
-              <label class="mc-toggle">
-                <input type="checkbox" id="minibia-copilot-alpha-watch-enabled" />
-                <span>Toast on Alpha sightings</span>
-              </label>
-              <div class="mc-small-note" id="minibia-copilot-alpha-watch-status">Status: idle</div>
-            </div>
-          </div>
-
-          <div class="mc-section">
-            <div class="mc-label">Hunt Analyzer</div>
-            <div class="mc-stack">
-              <div class="mc-small-note" id="minibia-copilot-hunt-status">Status: no session</div>
-              <div class="mc-hunt-grid" id="minibia-copilot-hunt-stats" hidden>
-                <div class="mc-hunt-cell"><span class="mc-field-label">Elapsed</span><span data-key="elapsed">—</span></div>
-                <div class="mc-hunt-cell"><span class="mc-field-label">XP / h</span><span data-key="xpPerHour">—</span></div>
-                <div class="mc-hunt-cell"><span class="mc-field-label">Gold / h</span><span data-key="goldPerHour">—</span></div>
-                <div class="mc-hunt-cell"><span class="mc-field-label">Kills / h</span><span data-key="killsPerHour">—</span></div>
-                <div class="mc-hunt-cell"><span class="mc-field-label">Total XP</span><span data-key="xp">—</span></div>
-                <div class="mc-hunt-cell"><span class="mc-field-label">Total Gold</span><span data-key="gold">—</span></div>
-              </div>
-              <div class="mc-small-note" id="minibia-copilot-hunt-top-monster">Top kill: —</div>
-              <div class="mc-small-note" id="minibia-copilot-hunt-top-loot">Top loot: —</div>
-              <label class="mc-toggle">
-                <input type="checkbox" id="minibia-copilot-hunt-autopoll" />
-                <span>Auto-refresh every 10s</span>
-              </label>
-              <div class="mc-actions mc-actions-inline-three">
-                <button type="button" class="mc-small-button" id="minibia-copilot-hunt-refresh">Refresh</button>
-                <button type="button" class="mc-small-button" id="minibia-copilot-hunt-start">Start</button>
-                <button type="button" class="mc-small-button" id="minibia-copilot-hunt-reset">Reset</button>
-              </div>
-              <div class="mc-actions mc-actions-inline-two">
-                <button type="button" class="mc-small-button" id="minibia-copilot-hunt-pause">Pause / Resume</button>
-                <button type="button" class="mc-small-button" id="minibia-copilot-hunt-stop">Stop</button>
-              </div>
-            </div>
-          </div>
           <div class="mc-section">
             <div class="mc-label">X-Ray</div>
             <button type="button" class="mc-small-button" id="minibia-copilot-xray-overlay-toggle">Disable Overlay</button>
@@ -13084,18 +13038,6 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
           </div>
 
           <div class="mc-section">
-            <div class="mc-label">Auto Eat</div>
-            <label class="mc-toggle">
-              <input type="checkbox" id="minibia-copilot-auto-eat-enabled" />
-              <span>Enable Auto Eat</span>
-            </label>
-            <label class="mc-field" for="minibia-copilot-auto-eat-hotkey">
-              <span class="mc-field-label">Eat Hotkey (1-12)</span>
-              <input type="number" id="minibia-copilot-auto-eat-hotkey" min="1" max="12" placeholder="10" />
-            </label>
-          </div>
-
-          <div class="mc-section">
             <div class="mc-label">Equip Ring</div>
             <div class="mc-stack">
               <label class="mc-toggle">
@@ -13167,126 +13109,8 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
               <div class="mc-small-note">Defaults to Stone Skin Amulet. Auto-swap requires at least one empty backpack slot.</div>
             </div>
           </div>
-
-          <div class="mc-section">
-            <div class="mc-label">Lootbag</div>
-            <div class="mc-stack">
-              <label class="mc-toggle">
-                <input type="checkbox" id="minibia-copilot-lootbag-enabled" />
-                <span>Drop matching items to ground</span>
-              </label>
-              <div class="mc-inline">
-                <input type="text" id="minibia-copilot-lootbag-input" placeholder="Item name" />
-                <button type="button" class="mc-small-button" id="minibia-copilot-lootbag-add">Add</button>
-              </div>
-              <div class="mc-list" id="minibia-copilot-lootbag-list"></div>
-              <div class="mc-actions mc-actions-inline-two">
-                <button type="button" class="mc-small-button" id="minibia-copilot-lootbag-drop-now">Drop Now</button>
-                <button type="button" class="mc-small-button" id="minibia-copilot-lootbag-clear">Clear List</button>
-              </div>
-              <div class="mc-small-note" id="minibia-copilot-lootbag-status">Status: idle</div>
-              <div class="mc-small-note">Scans open backpacks every 1.5s. Items go to the tile under your character. Won't drop while in a PZ. Case-insensitive name match (prefix-aware: "small gold coin" matches "small gold coin (12)").</div>
-            </div>
-          </div>
-
-          <div class="mc-section">
-            <div class="mc-label">Magic Wall Timer</div>
-            <div class="mc-stack">
-              <label class="mc-toggle">
-                <input type="checkbox" id="minibia-copilot-magic-wall-enabled" />
-                <span>Show on-screen MW timer</span>
-              </label>
-              <label class="mc-toggle">
-                <input type="checkbox" id="minibia-copilot-magic-wall-audio" />
-                <span>Alarm at lead time</span>
-              </label>
-              <div class="mc-field-grid">
-                <label class="mc-field" for="minibia-copilot-magic-wall-duration">
-                  <span class="mc-field-label">Duration (s)</span>
-                  <input type="number" id="minibia-copilot-magic-wall-duration" min="1" max="120" placeholder="20" />
-                </label>
-                <label class="mc-field" for="minibia-copilot-magic-wall-lead">
-                  <span class="mc-field-label">Lead (s)</span>
-                  <input type="number" id="minibia-copilot-magic-wall-lead" min="0" max="20" placeholder="3" />
-                </label>
-              </div>
-              <div class="mc-small-note" id="minibia-copilot-magic-wall-status">Status: idle</div>
-            </div>
-          </div>
-
-          <div class="mc-section">
-            <div class="mc-label" id="minibia-copilot-home">Panic Runner Home: not set</div>
-            <div class="mc-stack">
-              <button type="button" id="minibia-copilot-set-home">Set Home (current tile)</button>
-              <label class="mc-toggle">
-                <input type="checkbox" id="minibia-copilot-panic-unknown" />
-                <span>Trigger on unknown player</span>
-              </label>
-              <label class="mc-toggle">
-                <input type="checkbox" id="minibia-copilot-panic-health" />
-                <span>Trigger on health loss</span>
-              </label>
-              <label class="mc-toggle">
-                <input type="checkbox" id="minibia-copilot-panic-return" />
-                <span>Auto return after threat</span>
-              </label>
-              <div class="mc-field-label">Trusted names</div>
-              <div class="mc-inline">
-                <input type="text" id="minibia-copilot-panic-trusted-input" placeholder="Add name" />
-                <button type="button" class="mc-small-button" id="minibia-copilot-panic-trusted-add">Add</button>
-              </div>
-              <div class="mc-list" id="minibia-copilot-panic-trusted-list"></div>
-            </div>
-          </div>
-
-          <div class="mc-section">
-            <div class="mc-label">GM Kill Switch</div>
-            <div class="mc-stack">
-              <div class="mc-inline">
-                <input type="text" id="minibia-copilot-panic-gm-input" placeholder="Game master name" />
-                <button type="button" class="mc-small-button" id="minibia-copilot-panic-gm-add">Add</button>
-              </div>
-              <div class="mc-list" id="minibia-copilot-panic-gm-list"></div>
-            </div>
-          </div>
         </div>
 
-        <div class="mc-tab-pane" data-tab="navigation" hidden>
-          <div class="mc-section">
-            <div class="mc-label">Cave Bot</div>
-            <div class="mc-stack">
-              <label class="mc-field" for="minibia-copilot-cave-preset-select">
-                <span class="mc-field-label">Active preset</span>
-                <select id="minibia-copilot-cave-preset-select"></select>
-              </label>
-              <div class="mc-actions mc-actions-inline-two">
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-preset-new">New Preset</button>
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-preset-delete">Delete</button>
-              </div>
-              <div class="mc-field-label">Record waypoint at current spot</div>
-              <div class="mc-actions mc-actions-inline-two">
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-record">+ Node</button>
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-record-stand">+ Stand</button>
-              </div>
-              <div class="mc-actions mc-actions-inline-three">
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-record-rope">+ Rope</button>
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-record-ladder">+ Ladder</button>
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-record-shovel">+ Shovel</button>
-              </div>
-              <div class="mc-actions mc-actions-inline-two">
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-record-use">+ Use Tile</button>
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-remove-last">Remove Last</button>
-              </div>
-              <div class="mc-small-note" id="minibia-copilot-cave-closest">Closest start: no waypoints</div>
-              <div class="mc-small-note" id="minibia-copilot-cave-transition-status">Transitions learned: none</div>
-              <div class="mc-actions mc-actions-inline-two">
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-start">Start</button>
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-stop">Stop</button>
-              </div>
-              <div class="mc-small-note" id="minibia-copilot-cave-status">Status: no waypoints</div>
-            </div>
-          </div>
-        </div>
 
         <div class="mc-tab-pane" data-tab="utility" hidden>
           <div class="mc-section">
@@ -13294,83 +13118,72 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
             <div class="mc-stack">
               <label class="mc-toggle">
                 <input type="checkbox" id="minibia-copilot-rune-enabled" />
-                <span>Enable rune loop</span>
+                <span>Activar ML Trainer</span>
               </label>
               <label class="mc-field" for="minibia-copilot-rune-spell">
-                <span class="mc-field-label">Spell words</span>
+                <span class="mc-field-label">Spell</span>
                 <input type="text" id="minibia-copilot-rune-spell" placeholder="adori vita vis" />
               </label>
               <label class="mc-field" for="minibia-copilot-rune-mana">
-                <span class="mc-field-label">Mana per cast</span>
+                <span class="mc-field-label">Mana</span>
                 <input type="number" id="minibia-copilot-rune-mana" min="0" placeholder="600" />
               </label>
             </div>
           </div>
 
           <div class="mc-section">
-            <div class="mc-label">Talk (Chat AI)</div>
-            <div class="mc-stack">
-              <label class="mc-toggle">
-                <input type="checkbox" id="minibia-copilot-talk-enabled" />
-                <span>Enable Auto Reply</span>
-              </label>
-              <label class="mc-field" for="minibia-copilot-talk-api-key">
-                <span class="mc-field-label">Gemini API key</span>
-                <input type="password" id="minibia-copilot-talk-api-key" placeholder="paste key" />
-              </label>
-              <label class="mc-field" for="minibia-copilot-talk-prompt">
-                <span class="mc-field-label">Reply style prompt</span>
-                <textarea id="minibia-copilot-talk-prompt" placeholder="e.g. terse, in-character"></textarea>
-              </label>
-              <div class="mc-small-note" id="minibia-copilot-talk-status">Status: idle</div>
-              <div class="mc-small-note">Replies only to the newest unseen message in Default chat. Won't admit it is a bot.</div>
-            </div>
+            <div class="mc-label">Auto Eat</div>
+            <label class="mc-toggle">
+              <input type="checkbox" id="minibia-copilot-auto-eat-enabled" />
+              <span>Activar Auto Eat</span>
+            </label>
+            <label class="mc-field" for="minibia-copilot-auto-eat-hotkey">
+              <span class="mc-field-label">Eat Hotkey (1-12)</span>
+              <input type="number" id="minibia-copilot-auto-eat-hotkey" min="1" max="12" placeholder="10" />
+            </label>
           </div>
         </div>
 
-        <div class="mc-tab-pane" data-tab="deaths" hidden>
+        <div class="mc-tab-pane" data-tab="safely" hidden>
           <div class="mc-section">
-            <div class="mc-label">Tracker</div>
+            <div class="mc-label" id="minibia-copilot-home">Lugar Seguro: no asignado</div>
             <div class="mc-stack">
+              <button type="button" id="minibia-copilot-set-home">Asignar Lugar Seguro</button>
               <label class="mc-toggle">
-                <input type="checkbox" id="minibia-copilot-tracker-enabled" />
-                <span>Poll minibia.com</span>
+                <input type="checkbox" id="minibia-copilot-panic-unknown" />
+                <span>Activar con jugador desconocido.</span>
               </label>
-              <label class="mc-field" for="minibia-copilot-tracker-interval">
-                <span class="mc-field-label">Poll interval (sec)</span>
-                <input type="number" id="minibia-copilot-tracker-interval" min="30" max="600" placeholder="120" />
+              <label class="mc-toggle">
+                <input type="checkbox" id="minibia-copilot-panic-health" />
+                <span>Activar al perder vida.</span>
               </label>
-              <div class="mc-small-note" id="minibia-copilot-tracker-status">Status: idle</div>
+              <label class="mc-toggle">
+                <input type="checkbox" id="minibia-copilot-panic-return" />
+                <span>Regreso automatico.</span>
+              </label>
+              <div class="mc-field-label">Jugadores Conocidos</div>
+              <div class="mc-inline">
+                <input type="text" id="minibia-copilot-panic-trusted-input" placeholder="Agregar Nombre" />
+                <button type="button" class="mc-small-button" id="minibia-copilot-panic-trusted-add">Add</button>
+              </div>
+              <div class="mc-list" id="minibia-copilot-panic-trusted-list"></div>
             </div>
           </div>
 
-          <div class="mc-subtabs" id="minibia-copilot-tracker-subtabs">
-            <button type="button" class="mc-subtab-button" data-subtab="enemy">⚔ Enemy</button>
-            <button type="button" class="mc-subtab-button" data-subtab="friendly">🛡 Friendly</button>
-          </div>
-
           <div class="mc-section">
-            <div class="mc-label" id="minibia-copilot-tracker-list-label">Tracked Enemies</div>
+            <div class="mc-label">Alerta de GM</div>
             <div class="mc-stack">
               <div class="mc-inline">
-                <input type="text" id="minibia-copilot-tracker-add-input" placeholder="Character name" />
-                <button type="button" class="mc-small-button" id="minibia-copilot-tracker-add">Add</button>
+                <input type="text" id="minibia-copilot-panic-gm-input" placeholder="Agregar Nombre Gm o God" />
+                <button type="button" class="mc-small-button" id="minibia-copilot-panic-gm-add">Add</button>
               </div>
-              <div class="mc-list" id="minibia-copilot-tracker-list"></div>
+              <div class="mc-list" id="minibia-copilot-panic-gm-list"></div>
             </div>
           </div>
 
-          <div class="mc-section">
-            <div class="mc-label" id="minibia-copilot-tracker-deaths-label">Recent Enemy Deaths (last 30 min)</div>
-            <div class="mc-stack">
-              <div class="mc-list" id="minibia-copilot-tracker-deaths"></div>
-              <div class="mc-actions mc-actions-inline-two">
-                <button type="button" class="mc-small-button" id="minibia-copilot-tracker-refresh">Refresh Now</button>
-                <button type="button" class="mc-small-button" id="minibia-copilot-tracker-clear">Clear Deaths</button>
-              </div>
-            </div>
-          </div>
+
         </div>
+
 
       </div>
     `;
