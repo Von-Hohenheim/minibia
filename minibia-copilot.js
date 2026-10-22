@@ -12871,26 +12871,6 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
             </div>
           </div>
 
-          <div class="mc-section">
-            <div class="mc-label">Lootbag</div>
-            <div class="mc-stack">
-              <label class="mc-toggle">
-                <input type="checkbox" id="minibia-copilot-lootbag-enabled" />
-                <span>Drop matching items to ground</span>
-              </label>
-              <div class="mc-inline">
-                <input type="text" id="minibia-copilot-lootbag-input" placeholder="Item name" />
-                <button type="button" class="mc-small-button" id="minibia-copilot-lootbag-add">Add</button>
-              </div>
-              <div class="mc-list" id="minibia-copilot-lootbag-list"></div>
-              <div class="mc-actions mc-actions-inline-two">
-                <button type="button" class="mc-small-button" id="minibia-copilot-lootbag-drop-now">Drop Now</button>
-                <button type="button" class="mc-small-button" id="minibia-copilot-lootbag-clear">Clear List</button>
-              </div>
-              <div class="mc-small-note" id="minibia-copilot-lootbag-status">Status: idle</div>
-              <div class="mc-small-note">Scans open backpacks every 1.5s. Items go to the tile under your character. Won't drop while in a PZ. Case-insensitive name match (prefix-aware: "small gold coin" matches "small gold coin (12)").</div>
-            </div>
-          </div>
 
           <div class="mc-section">
             <div class="mc-label">Magic Wall Timer</div>
@@ -12985,7 +12965,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
               <input type="number" id="minibia-copilot-auto-eat-hotkey" min="1" max="12" placeholder="10" />
             </label>
           </div>
-      
+
         </div>
 
 
