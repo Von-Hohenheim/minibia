@@ -12682,6 +12682,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
         <button type="button" class="mc-tab-button" data-tab="combat"><span class="mc-tab-icon">⚔</span><span>Combat</span></button>
         <button type="button" class="mc-tab-button" data-tab="survival"><span class="mc-tab-icon">❤</span><span>Survival</span></button>
         <button type="button" class="mc-tab-button" data-tab="utility"><span class="mc-tab-icon">⚙</span><span>Utility</span></button>
+        <button type="button" class="mc-tab-button" data-tab="safely"><span class="mc-tab-icon">⚙</span><span>Safely</span></button>
       </div>
 
       <div class="mc-body">
@@ -12897,6 +12898,49 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
             </div>
           </div>
 
+
+        </div>
+
+
+        <div class="mc-tab-pane" data-tab="utility" hidden>
+          <div class="mc-section">
+            <div class="mc-label">Magic Level Trainer</div>
+            <div class="mc-stack">
+              <label class="mc-toggle">
+                <input type="checkbox" id="minibia-copilot-rune-enabled" />
+                <span>Enable rune loop</span>
+              </label>
+              <label class="mc-field" for="minibia-copilot-rune-spell">
+                <span class="mc-field-label">Spell words</span>
+                <input type="text" id="minibia-copilot-rune-spell" placeholder="adori vita vis" />
+              </label>
+              <label class="mc-field" for="minibia-copilot-rune-mana">
+                <span class="mc-field-label">Mana per cast</span>
+                <input type="number" id="minibia-copilot-rune-mana" min="0" placeholder="600" />
+              </label>
+            </div>
+          </div>
+
+          <div class="mc-section">
+            <div class="mc-label">Auto Eat</div>
+            <label class="mc-toggle">
+              <input type="checkbox" id="minibia-copilot-auto-eat-enabled" />
+              <span>Enable Auto Eat</span>
+            </label>
+            <label class="mc-field" for="minibia-copilot-auto-eat-hotkey">
+              <span class="mc-field-label">Eat Hotkey (1-12)</span>
+              <input type="number" id="minibia-copilot-auto-eat-hotkey" min="1" max="12" placeholder="10" />
+            </label>
+          </div>
+        </div>
+
+        <div class="mc-tab-pane" data-tab="safely" hidden>
+          <div class="mc-snapshot" id="minibia-copilot-snapshot">
+            <div class="mc-stat"><span class="mc-stat-label">HP</span><span class="mc-stat-value" data-tone="hp" id="minibia-copilot-snapshot-hp">—</span></div>
+            <div class="mc-stat"><span class="mc-stat-label">Mana</span><span class="mc-stat-value" data-tone="mana" id="minibia-copilot-snapshot-mana">—</span></div>
+            <div class="mc-stat"><span class="mc-stat-label">Lvl</span><span class="mc-stat-value" data-tone="lvl" id="minibia-copilot-snapshot-level">—</span></div>
+          </div>
+
           <div class="mc-section">
             <div class="mc-label" id="minibia-copilot-home">Panic Runner Home: not set</div>
             <div class="mc-stack">
@@ -12932,43 +12976,9 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
               <div class="mc-list" id="minibia-copilot-panic-gm-list"></div>
             </div>
           </div>
-        </div>
 
-
-        <div class="mc-tab-pane" data-tab="utility" hidden>
-          <div class="mc-section">
-            <div class="mc-label">Magic Level Trainer</div>
-            <div class="mc-stack">
-              <label class="mc-toggle">
-                <input type="checkbox" id="minibia-copilot-rune-enabled" />
-                <span>Enable rune loop</span>
-              </label>
-              <label class="mc-field" for="minibia-copilot-rune-spell">
-                <span class="mc-field-label">Spell words</span>
-                <input type="text" id="minibia-copilot-rune-spell" placeholder="adori vita vis" />
-              </label>
-              <label class="mc-field" for="minibia-copilot-rune-mana">
-                <span class="mc-field-label">Mana per cast</span>
-                <input type="number" id="minibia-copilot-rune-mana" min="0" placeholder="600" />
-              </label>
-            </div>
-          </div>
-
-          <div class="mc-section">
-            <div class="mc-label">Auto Eat</div>
-            <label class="mc-toggle">
-              <input type="checkbox" id="minibia-copilot-auto-eat-enabled" />
-              <span>Enable Auto Eat</span>
-            </label>
-            <label class="mc-field" for="minibia-copilot-auto-eat-hotkey">
-              <span class="mc-field-label">Eat Hotkey (1-12)</span>
-              <input type="number" id="minibia-copilot-auto-eat-hotkey" min="1" max="12" placeholder="10" />
-            </label>
-          </div>
 
         </div>
-
-
 
 
       </div>
