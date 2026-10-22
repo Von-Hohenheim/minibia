@@ -10564,8 +10564,8 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
 
     const home = bot.pz?.getHomePz?.();
     homeLabel.textContent = home
-      ? `Panic Runner Home: ${home.x}, ${home.y}, ${home.z}`
-      : "Panic Runner Home: not set";
+      ? `Lugar Seguro: ${home.x}, ${home.y}, ${home.z}`
+      : "Lugar Seguro: no establecido";
   }
 
   function refreshPanicStatus() {
@@ -12882,14 +12882,14 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
             <div class="mc-stack">
               <label class="mc-toggle">
                 <input type="checkbox" id="minibia-copilot-rune-enabled" />
-                <span>Enable rune loop</span>
+                <span>Activar ML Trainer</span>
               </label>
               <label class="mc-field" for="minibia-copilot-rune-spell">
-                <span class="mc-field-label">Spell words</span>
+                <span class="mc-field-label">Spell</span>
                 <input type="text" id="minibia-copilot-rune-spell" placeholder="adori vita vis" />
               </label>
               <label class="mc-field" for="minibia-copilot-rune-mana">
-                <span class="mc-field-label">Mana per cast</span>
+                <span class="mc-field-label">Mana</span>
                 <input type="number" id="minibia-copilot-rune-mana" min="0" placeholder="600" />
               </label>
             </div>
@@ -12899,7 +12899,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
             <div class="mc-label">Auto Eat</div>
             <label class="mc-toggle">
               <input type="checkbox" id="minibia-copilot-auto-eat-enabled" />
-              <span>Enable Auto Eat</span>
+              <span>Activar Auto Eat</span>
             </label>
             <label class="mc-field" for="minibia-copilot-auto-eat-hotkey">
               <span class="mc-field-label">Eat Hotkey (1-12)</span>
