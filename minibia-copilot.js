@@ -12682,7 +12682,6 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
         <button type="button" class="mc-tab-button" data-tab="combat"><span class="mc-tab-icon">⚔</span><span>Combat</span></button>
         <button type="button" class="mc-tab-button" data-tab="survival"><span class="mc-tab-icon">❤</span><span>Survival</span></button>
         <button type="button" class="mc-tab-button" data-tab="utility"><span class="mc-tab-icon">⚙</span><span>Utility</span></button>
-        <button type="button" class="mc-tab-button" data-tab="deaths"><span class="mc-tab-icon">☠</span><span>Deaths</span></button>
       </div>
 
       <div class="mc-body">
@@ -13008,49 +13007,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
           </div>
         </div>
 
-        <div class="mc-tab-pane" data-tab="deaths" hidden>
-          <div class="mc-section">
-            <div class="mc-label">Tracker</div>
-            <div class="mc-stack">
-              <label class="mc-toggle">
-                <input type="checkbox" id="minibia-copilot-tracker-enabled" />
-                <span>Poll minibia.com</span>
-              </label>
-              <label class="mc-field" for="minibia-copilot-tracker-interval">
-                <span class="mc-field-label">Poll interval (sec)</span>
-                <input type="number" id="minibia-copilot-tracker-interval" min="30" max="600" placeholder="120" />
-              </label>
-              <div class="mc-small-note" id="minibia-copilot-tracker-status">Status: idle</div>
-            </div>
-          </div>
 
-          <div class="mc-subtabs" id="minibia-copilot-tracker-subtabs">
-            <button type="button" class="mc-subtab-button" data-subtab="enemy">⚔ Enemy</button>
-            <button type="button" class="mc-subtab-button" data-subtab="friendly">🛡 Friendly</button>
-          </div>
-
-          <div class="mc-section">
-            <div class="mc-label" id="minibia-copilot-tracker-list-label">Tracked Enemies</div>
-            <div class="mc-stack">
-              <div class="mc-inline">
-                <input type="text" id="minibia-copilot-tracker-add-input" placeholder="Character name" />
-                <button type="button" class="mc-small-button" id="minibia-copilot-tracker-add">Add</button>
-              </div>
-              <div class="mc-list" id="minibia-copilot-tracker-list"></div>
-            </div>
-          </div>
-
-          <div class="mc-section">
-            <div class="mc-label" id="minibia-copilot-tracker-deaths-label">Recent Enemy Deaths (last 30 min)</div>
-            <div class="mc-stack">
-              <div class="mc-list" id="minibia-copilot-tracker-deaths"></div>
-              <div class="mc-actions mc-actions-inline-two">
-                <button type="button" class="mc-small-button" id="minibia-copilot-tracker-refresh">Refresh Now</button>
-                <button type="button" class="mc-small-button" id="minibia-copilot-tracker-clear">Clear Deaths</button>
-              </div>
-            </div>
-          </div>
-        </div>
 
       </div>
     `;
