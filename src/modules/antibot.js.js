@@ -1,276 +1,158 @@
+
 window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
-window.__minibiaCopilotBundle.installAntiBotModule = function installAntiBotModule(bot) {
-  const configStorageKey = "minibiaCopilot.antiBot.config";
-  const bannerId = "minibia-copilot-antibot-banner";
-  const originalTitle = document.title;
-  const seenEntries = new WeakSet();
-  const state = {
-    running: false,
-    pollTimerId: null,
-    alarmTimerId: null,
-    titleTimerId: null,
-    clearTimerId: null,
-    alerting: false,
-    secondsLeft: null,
-    lastWarningAt: 0,
-    pausedByUs: false,
-  };
+window.__minibiaCopilotBundle.installAntiBotModule =
+  function installAntiBotModule(bot) {
+    const TARGET = "anti-bot rune check";
+    const COOLDOWN_MS = 5000;
 
-  const config = Object.assign(
-    {
-      enabled: true,
-      pollMs: 500,
-      // Se guardan como texto porque localStorage no puede almacenar RegExp.
-      warnPattern: "anti-?bot rune check in (\\d+) seconds?",
-      passedPattern: "verification passed",
-      urgentAtSec: 30,
-      alarmEveryMs: 3000,
-      urgentAlarmEveryMs: 1200,
-      autoClearMs: 120000,
-      notify: true,
-      pauseAllOnWarning: false, // pausa todo el bot al primer aviso
-      resumeAfterPassed: true,  // reanuda solo si lo pausó este módulo y llega "Verification passed"
-    },
-    bot.storage.get(configStorageKey, {})
-  );
+    let lastAlertAt = 0;
+    let originalHandler = null;
+    let patchedPrototype = null;
+    let retryTimer = null;
 
-  function persistConfig() {
-    bot.storage.set(configStorageKey, { ...config });
-  }
+    function checkMessage(message) {
+      const text = String(message ?? "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase();
 
-  // ---------------------------------------------------------------------------
-  // Lectura del chat (misma fuente que usa el módulo panic)
-  // ---------------------------------------------------------------------------
+      if (!text.includes(TARGET)) return false;
 
-  function getChannelEntries() {
-    const out = [];
-    const channels = window.gameClient?.interface?.channelManager?.channels || [];
-    for (const channel of channels) {
-      for (const entry of channel?.__contents || []) {
-        if (entry && typeof entry === "object") out.push(entry);
+      const now = Date.now();
+      if (now - lastAlertAt < COOLDOWN_MS) return true;
+
+      lastAlertAt = now;
+
+      console.warn(
+        "[minibia-copilot] ¡Anti-bot rune check detectado!",
+        message
+      );
+
+      // Reutiliza el sistema de alarma del bot.
+      bot.playAlarm();
+
+      // Aviso visual que no bloquea el juego.
+      let notice = document.getElementById(
+        "minibia-antibot-notice"
+      );
+
+      if (!notice) {
+        notice = document.createElement("div");
+        notice.id = "minibia-antibot-notice";
+
+        Object.assign(notice.style, {
+          position: "fixed",
+          top: "20px",
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: "2147483647",
+          background: "#8b0000",
+          color: "#ffffff",
+          padding: "16px 24px",
+          border: "2px solid #ff5555",
+          borderRadius: "8px",
+          font: "bold 18px sans-serif",
+          boxShadow: "0 4px 20px #0009"
+        });
+
+        document.body.appendChild(notice);
       }
-    }
-    return out;
-  }
 
-  function recentMessages(limit = 10) {
-    return getChannelEntries()
-      .slice(-limit)
-      .map((entry) => ({ message: String(entry.message || ""), time: entry.__time || null }));
-  }
+      notice.textContent =
+        "⚠ ANTI-BOT RUNE CHECK — Atiéndelo manualmente";
 
-  function markExistingAsSeen() {
-    getChannelEntries().forEach((entry) => seenEntries.add(entry));
-  }
+      notice.style.display = "block";
 
-  // ---------------------------------------------------------------------------
-  // Alerta (banner, sonido, título, notificación)
-  // ---------------------------------------------------------------------------
+      bot.log("Anti-bot rune check detected", {
+        message: String(message),
+        at: new Date().toISOString()
+      });
 
-  function setBanner(text, urgent) {
-    let el = document.getElementById(bannerId);
-    if (!el) {
-      el = document.createElement("div");
-      el.id = bannerId;
-      el.style.cssText =
-        "position:fixed;top:0;left:0;right:0;z-index:2147483647;padding:12px;" +
-        "color:#fff;font:bold 16px sans-serif;text-align:center;cursor:pointer";
-      el.onclick = () => clearAlert("dismissed");
-      document.body.appendChild(el);
-    }
-    el.style.background = urgent ? "#c00" : "#d98200";
-    el.textContent = text;
-  }
-
-  function scheduleAlarm(urgent) {
-    if (state.alarmTimerId != null) window.clearInterval(state.alarmTimerId);
-    const every = urgent ? config.urgentAlarmEveryMs : config.alarmEveryMs;
-    bot.playAlarm?.();
-    state.alarmTimerId = window.setInterval(() => bot.playAlarm?.(), Math.max(500, every));
-  }
-
-  function startTitleFlash() {
-    if (state.titleTimerId != null) return;
-    let on = false;
-    state.titleTimerId = window.setInterval(() => {
-      on = !on;
-      document.title = on ? "\u26A0 ANTI-BOT \u26A0" : originalTitle;
-    }, 800);
-  }
-
-  function pauseBot() {
-    if (!config.pauseAllOnWarning) return;
-    state.pausedByUs = !!bot.pauseAll?.(); // false si ya estaba pausado por ti
-  }
-
-  function onWarning(seconds, text) {
-    const urgent = seconds <= config.urgentAtSec;
-    const first = !state.alerting;
-
-    state.alerting = true;
-    state.secondsLeft = seconds;
-    state.lastWarningAt = Date.now();
-
-    if (first) {
-      pauseBot();
-      startTitleFlash();
+      return true;
     }
 
-    setBanner(`\u26A0 ANTI-BOT RUNE \u2014 verificación en ${seconds}s`, urgent);
-    scheduleAlarm(urgent);
+    function installHook() {
+      if (patchedPrototype) return true;
 
-    if (config.notify && "Notification" in window && Notification.permission === "granted") {
-      try {
-        new Notification("Minibia: anti-bot rune", { body: `Verificación en ${seconds} segundos` });
-      } catch (error) {}
-    }
+      // PacketHandler debe estar disponible en el cliente.
+      const Handler =
+        typeof PacketHandler !== "undefined"
+          ? PacketHandler
+          : window.PacketHandler;
 
-    if (state.clearTimerId != null) window.clearTimeout(state.clearTimerId);
-    state.clearTimerId = window.setTimeout(() => clearAlert("timeout"), config.autoClearMs);
+      const prototype = Handler?.prototype;
 
-    bot.log("anti-bot warning", { seconds, text });
-  }
-
-  function clearAlert(reason = "manual") {
-    const wasAlerting = state.alerting;
-    state.alerting = false;
-    state.secondsLeft = null;
-
-    if (state.pausedByUs) {
-      if (reason === "verification passed" && config.resumeAfterPassed) {
-        bot.resumeAll?.();
+      if (!prototype ||
+          typeof prototype.handleServerMessage !== "function") {
+        return false;
       }
-      state.pausedByUs = false;
+
+      originalHandler = prototype.handleServerMessage;
+      patchedPrototype = prototype;
+
+      prototype.handleServerMessage = function (
+        message,
+        color,
+        priority
+      ) {
+        try {
+          checkMessage(message);
+        } catch (error) {
+          console.error(
+            "[minibia-copilot] Anti-bot detector error",
+            error
+          );
+        }
+
+        // No modifica ni bloquea el mensaje original.
+        return originalHandler.apply(this, arguments);
+      };
+
+      bot.log("Anti-bot message detector installed");
+      return true;
     }
 
-    [
-      ["alarmTimerId", window.clearInterval],
-      ["titleTimerId", window.clearInterval],
-      ["clearTimerId", window.clearTimeout],
-    ].forEach(([key, fn]) => {
-      if (state[key] != null) {
-        fn.call(window, state[key]);
-        state[key] = null;
+    function cleanup() {
+      if (retryTimer !== null) {
+        clearInterval(retryTimer);
+        retryTimer = null;
       }
-    });
 
-    document.title = originalTitle;
-    document.getElementById(bannerId)?.remove();
-    if (wasAlerting) bot.log("anti-bot alert cleared", reason);
-    return wasAlerting;
-  }
-
-  // ---------------------------------------------------------------------------
-  // Escaneo periódico
-  // ---------------------------------------------------------------------------
-
-  function scan() {
-    let warnRe;
-    let passedRe;
-    try {
-      warnRe = new RegExp(config.warnPattern, "i");
-      passedRe = new RegExp(config.passedPattern, "i");
-    } catch (error) {
-      return;
-    }
-
-    for (const entry of getChannelEntries()) {
-      if (seenEntries.has(entry)) continue;
-      seenEntries.add(entry);
-
-      const text = String(entry.message || "");
-      const match = text.match(warnRe);
-      if (match) {
-        onWarning(Number(match[1]), text);
-      } else if (state.alerting && passedRe.test(text)) {
-        clearAlert("verification passed");
+      if (
+        patchedPrototype &&
+        originalHandler &&
+        patchedPrototype.handleServerMessage !== originalHandler
+      ) {
+        patchedPrototype.handleServerMessage = originalHandler;
       }
+
+      document
+        .getElementById("minibia-antibot-notice")
+        ?.remove();
+
+      patchedPrototype = null;
+      originalHandler = null;
     }
-  }
 
-  function tick() {
-    if (!state.running) return;
-    try {
-      scan();
-    } catch (error) {
-      bot.log("anti-bot scan failed", error?.message || error);
-    } finally {
-      if (state.running) {
-        state.pollTimerId = window.setTimeout(tick, Math.max(200, Number(config.pollMs) || 500));
-      }
+    // Espera al cliente si todavía no ha terminado de cargar.
+    if (!installHook()) {
+      retryTimer = setInterval(() => {
+        if (installHook()) {
+          clearInterval(retryTimer);
+          retryTimer = null;
+        }
+      }, 1000);
     }
-  }
 
-  // ---------------------------------------------------------------------------
-  // API pública
-  // ---------------------------------------------------------------------------
+    bot.addCleanup(cleanup);
 
-  function start(overrides = {}) {
-    Object.assign(config, overrides, { enabled: true });
-    persistConfig();
-    if (state.running) return false;
-
-    state.running = true;
-    markExistingAsSeen(); // no reaccionar a mensajes viejos del chat
-    if (config.notify && "Notification" in window && Notification.permission === "default") {
-      try {
-        Notification.requestPermission();
-      } catch (error) {}
-    }
-    bot.log("anti-bot alert started");
-    tick();
-    return true;
-  }
-
-  function stop(options = {}) {
-    const shouldPersistEnabled = options.persistEnabled !== false;
-    state.running = false;
-    if (state.pollTimerId != null) {
-      window.clearTimeout(state.pollTimerId);
-      state.pollTimerId = null;
-    }
-    clearAlert("stopped");
-    if (shouldPersistEnabled) {
-      config.enabled = false;
-      persistConfig();
-    }
-    bot.log("anti-bot alert stopped");
-    return true;
-  }
-
-  function status() {
-    return {
-      running: state.running,
-      alerting: state.alerting,
-      secondsLeft: state.secondsLeft,
-      lastWarningAt: state.lastWarningAt,
-      pausedByUs: state.pausedByUs,
-      config: { ...config },
+    bot.antiBot = {
+      checkMessage,
+      status: () => ({
+        installed: !!patchedPrototype,
+        lastAlertAt
+      }),
+      stop: cleanup
     };
-  }
-
-  function updateConfig(nextConfig = {}) {
-    Object.assign(config, nextConfig);
-    persistConfig();
-    bot.log("anti-bot config updated", { ...config });
-    return { ...config };
-  }
-
-  bot.antiBot = {
-    start,
-    stop,
-    status,
-    updateConfig,
-    recentMessages,
-    ack: () => clearAlert("manual"),
-    test: (seconds = 60) => onWarning(Number(seconds) || 60, "test"),
-    config,
   };
-
-  bot.addCleanup(() => stop({ persistEnabled: false }));
-
-  if (config.enabled) {
-    start();
-  }
-};

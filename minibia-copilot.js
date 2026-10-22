@@ -12871,8 +12871,6 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
               <div class="mc-small-note">Defaults to Stone Skin Amulet. Auto-swap requires at least one empty backpack slot.</div>
             </div>
           </div>
-
-
         </div>
 
 
