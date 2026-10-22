@@ -12681,7 +12681,6 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
         <button type="button" class="mc-tab-button" data-tab="status"><span class="mc-tab-icon">⚡</span><span>Status</span></button>
         <button type="button" class="mc-tab-button" data-tab="combat"><span class="mc-tab-icon">⚔</span><span>Combat</span></button>
         <button type="button" class="mc-tab-button" data-tab="survival"><span class="mc-tab-icon">❤</span><span>Survival</span></button>
-        <button type="button" class="mc-tab-button" data-tab="navigation"><span class="mc-tab-icon">🗺</span><span>Navigate</span></button>
         <button type="button" class="mc-tab-button" data-tab="utility"><span class="mc-tab-icon">⚙</span><span>Utility</span></button>
         <button type="button" class="mc-tab-button" data-tab="deaths"><span class="mc-tab-icon">☠</span><span>Deaths</span></button>
       </div>
@@ -12968,42 +12967,6 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
           </div>
         </div>
 
-        <div class="mc-tab-pane" data-tab="navigation" hidden>
-          <div class="mc-section">
-            <div class="mc-label">Cave Bot</div>
-            <div class="mc-stack">
-              <label class="mc-field" for="minibia-copilot-cave-preset-select">
-                <span class="mc-field-label">Active preset</span>
-                <select id="minibia-copilot-cave-preset-select"></select>
-              </label>
-              <div class="mc-actions mc-actions-inline-two">
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-preset-new">New Preset</button>
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-preset-delete">Delete</button>
-              </div>
-              <div class="mc-field-label">Record waypoint at current spot</div>
-              <div class="mc-actions mc-actions-inline-two">
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-record">+ Node</button>
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-record-stand">+ Stand</button>
-              </div>
-              <div class="mc-actions mc-actions-inline-three">
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-record-rope">+ Rope</button>
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-record-ladder">+ Ladder</button>
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-record-shovel">+ Shovel</button>
-              </div>
-              <div class="mc-actions mc-actions-inline-two">
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-record-use">+ Use Tile</button>
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-remove-last">Remove Last</button>
-              </div>
-              <div class="mc-small-note" id="minibia-copilot-cave-closest">Closest start: no waypoints</div>
-              <div class="mc-small-note" id="minibia-copilot-cave-transition-status">Transitions learned: none</div>
-              <div class="mc-actions mc-actions-inline-two">
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-start">Start</button>
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-stop">Stop</button>
-              </div>
-              <div class="mc-small-note" id="minibia-copilot-cave-status">Status: no waypoints</div>
-            </div>
-          </div>
-        </div>
 
         <div class="mc-tab-pane" data-tab="utility" hidden>
           <div class="mc-section">
