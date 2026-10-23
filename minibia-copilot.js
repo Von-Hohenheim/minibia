@@ -10802,8 +10802,8 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
 
     const home = bot.pz?.getHomePz?.();
     homeLabel.textContent = home
-      ? `Panic Runner Home: ${home.x}, ${home.y}, ${home.z}`
-      : "Panic Runner Home: not set";
+      ? `Lugar Seguro: ${home.x}, ${home.y}, ${home.z}`
+      : "Lugar Seguro: no asignado";
   }
 
   function refreshPanicStatus() {
@@ -13013,11 +13013,11 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
             <div class="mc-stack">
               <label class="mc-toggle">
                 <input type="checkbox" id="minibia-copilot-auto-heal-enabled" />
-                <span>Enable Auto Heal</span>
+                <span>Activar Auto Heal</span>
               </label>
               <div class="mc-field-grid">
                 <label class="mc-field" for="minibia-copilot-auto-heal-min-hp">
-                  <span class="mc-field-label">Minimum HP</span>
+                  <span class="mc-field-label">HP</span>
                   <input type="number" id="minibia-copilot-auto-heal-min-hp" min="0" placeholder="250" />
                 </label>
                 <label class="mc-field" for="minibia-copilot-auto-heal-hp-hotkey">
@@ -13025,7 +13025,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
                   <input type="number" id="minibia-copilot-auto-heal-hp-hotkey" min="1" max="12" placeholder="1" />
                 </label>
                 <label class="mc-field" for="minibia-copilot-auto-heal-min-mana">
-                  <span class="mc-field-label">Minimum Mana</span>
+                  <span class="mc-field-label">Mana</span>
                   <input type="number" id="minibia-copilot-auto-heal-min-mana" min="0" placeholder="150" />
                 </label>
                 <label class="mc-field" for="minibia-copilot-auto-heal-mana-hotkey">
@@ -13033,7 +13033,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
                   <input type="number" id="minibia-copilot-auto-heal-mana-hotkey" min="1" max="12" placeholder="2" />
                 </label>
               </div>
-              <div class="mc-small-note">Polled ~20×/sec. HP fires before mana.</div>
+              <div class="mc-small-note">Chequeo de 20 veces/seg. el HP se cura antes que el mana.</div>
             </div>
           </div>
 
@@ -13042,10 +13042,10 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
             <div class="mc-stack">
               <label class="mc-toggle">
                 <input type="checkbox" id="minibia-copilot-equip-ring-enabled" />
-                <span>Keep ring equipped</span>
+                <span>Activar Equip Ring</span>
               </label>
               <label class="mc-field" for="minibia-copilot-equip-ring-type">
-                <span class="mc-field-label">Ring type</span>
+                <span class="mc-field-label">Ring:</span>
                 <select id="minibia-copilot-equip-ring-type">
                   <option value="">Any ring</option>
                   <option value="life ring">Life Ring</option>
@@ -13063,14 +13063,14 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
                 </select>
               </label>
               <label class="mc-field" for="minibia-copilot-equip-ring-custom">
-                <span class="mc-field-label">Custom (overrides dropdown)</span>
-                <input type="text" id="minibia-copilot-equip-ring-custom" placeholder="e.g. might ring" />
+                <span class="mc-field-label">Custom Ring</span>
+                <input type="text" id="minibia-copilot-equip-ring-custom" placeholder="ej. might ring" />
               </label>
               <label class="mc-toggle">
                 <input type="checkbox" id="minibia-copilot-equip-ring-autoswap" />
-                <span>Auto-swap wrong ring to backpack</span>
+                <span>Intercambiar automaticamente el anillo equivocado</span>
               </label>
-              <div class="mc-small-note">Auto-swap moves any non-matching ring to the first empty backpack slot, then equips the chosen ring on the next tick.</div>
+              <div class="mc-small-note">Utiliza el anillo selecionado, El cambio automatico requiere un espacio vacio en la mochila.</div>
             </div>
           </div>
 
@@ -13079,10 +13079,10 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
             <div class="mc-stack">
               <label class="mc-toggle">
                 <input type="checkbox" id="minibia-copilot-equip-amulet-enabled" />
-                <span>Keep amulet equipped</span>
+                <span>Activar Equip Amulet</span>
               </label>
               <label class="mc-field" for="minibia-copilot-equip-amulet-type">
-                <span class="mc-field-label">Amulet type</span>
+                <span class="mc-field-label">Amulet:</span>
                 <select id="minibia-copilot-equip-amulet-type">
                   <option value="">Any amulet</option>
                   <option value="stone skin amulet">Stone Skin Amulet</option>
@@ -13099,14 +13099,14 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
                 </select>
               </label>
               <label class="mc-field" for="minibia-copilot-equip-amulet-custom">
-                <span class="mc-field-label">Custom (overrides dropdown)</span>
-                <input type="text" id="minibia-copilot-equip-amulet-custom" placeholder="e.g. might necklace" />
+                <span class="mc-field-label">Custom Amulet</span>
+                <input type="text" id="minibia-copilot-equip-amulet-custom" placeholder="ej. might necklace" />
               </label>
               <label class="mc-toggle">
                 <input type="checkbox" id="minibia-copilot-equip-amulet-autoswap" />
-                <span>Auto-swap wrong amulet to backpack</span>
+                <span>Intercambiar automaticamente el amuleto equivocado</span>
               </label>
-              <div class="mc-small-note">Defaults to Stone Skin Amulet. Auto-swap requires at least one empty backpack slot.</div>
+              <div class="mc-small-note">Por defecto usa el Stone Skin Amulet. El cambio automatico requiere un espacio vacio en la mochila.</div>
             </div>
           </div>
         </div>
