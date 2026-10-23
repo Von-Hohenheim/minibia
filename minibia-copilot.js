@@ -11696,7 +11696,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
 
     const names = bot.attack?.getPriorityTargets?.() || [];
     if (!names.length) {
-      list.innerHTML = '<div class="mc-small-note">No priority targets yet. Add a monster name above.</div>';
+      list.innerHTML = '<div class="mc-small-note">No has agregado ningun monster.</div>';
     } else {
       list.innerHTML = names.map((name, index) => (
         `<div class="mc-priority-row" data-name="${escapeHtml(name)}">` +
@@ -12953,31 +12953,31 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
             <div class="mc-stack">
               <label class="mc-toggle">
                 <input type="checkbox" id="minibia-copilot-auto-attack-enabled" />
-                <span>Enable Auto Attack</span>
+                <span>Activar Auto Attack</span>
               </label>
               <label class="mc-toggle">
                 <input type="checkbox" id="minibia-copilot-auto-attack-melee" />
-                <span>Melee Mode</span>
+                <span>Mele</span>
               </label>
               <div class="mc-priority-block">
-                <div class="mc-field-label">Priority Targets (top = first)</div>
+                <div class="mc-field-label">Prioridad (top = primero)</div>
                 <div class="mc-inline">
-                  <input type="text" id="minibia-copilot-attack-priority-input" placeholder="Monster name" />
+                  <input type="text" id="minibia-copilot-attack-priority-input" placeholder="Monster" />
                   <button type="button" class="mc-small-button" id="minibia-copilot-attack-priority-add">Add</button>
                 </div>
                 <div class="mc-list" id="minibia-copilot-attack-priority-list"></div>
-                <div class="mc-small-note">Adjacent monsters always get attacked first (so blockers die), then priority list, then nearest. Case-insensitive.</div>
+                <div class="mc-small-note">Los monstruos cercanos siempre son atacados primero, luego la lista de prioridad, y después el mas cercano.</div>
               </div>
               <label class="mc-toggle">
                 <input type="checkbox" id="minibia-copilot-auto-attack-kite" />
-                <span>Kite when too close (non-melee)</span>
+                <span>Mantener Distancia</span>
               </label>
               <label class="mc-field" for="minibia-copilot-auto-attack-safe-distance">
-                <span class="mc-field-label">Kite distance (sqm)</span>
+                <span class="mc-field-label">Mantener Distancia (sqm)</span>
                 <input type="number" id="minibia-copilot-auto-attack-safe-distance" min="1" max="7" placeholder="4" />
               </label>
               <details>
-                <summary style="cursor:pointer;color:#8c7a52;font-size:11px;">Advanced (rune hotkey)</summary>
+                <summary style="cursor:pointer;color:#8c7a52;font-size:11px;">Avanzado (rune hotkey)</summary>
                 <div class="mc-stack" style="margin-top:6px;">
                   <label class="mc-field" for="minibia-copilot-auto-attack-rune-hotkey">
                     <span class="mc-field-label">Rune Hotkey (1-12)</span>
@@ -12992,18 +12992,18 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
             <div class="mc-label">Auto Utamo Vita</div>
             <label class="mc-toggle">
               <input type="checkbox" id="minibia-copilot-auto-magic-shield-enabled" />
-              <span>Re-cast magic shield when down</span>
+              <span>Activar magic shield.</span>
             </label>
-            <div class="mc-small-note">Casts utamo vita whenever magic shield is not active.</div>
+            <div class="mc-small-note">Lanza Utamo Vita siempre que no este activa.</div>
           </div>
 
           <div class="mc-section">
             <div class="mc-label">Auto Invisible</div>
             <label class="mc-toggle">
               <input type="checkbox" id="minibia-copilot-auto-invisible-enabled" />
-              <span>Re-cast invisibility when down</span>
+              <span>Activar invisibility.</span>
             </label>
-            <div class="mc-small-note">Casts utana vid whenever invisibility is not active.</div>
+            <div class="mc-small-note">Lanza Utana Vid siempre que no este activa.</div>
           </div>
         </div>
 
@@ -13017,7 +13017,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
               </label>
               <div class="mc-field-grid">
                 <label class="mc-field" for="minibia-copilot-auto-heal-min-hp">
-                  <span class="mc-field-label">HP</span>
+                  <span class="mc-field-label">HP:</span>
                   <input type="number" id="minibia-copilot-auto-heal-min-hp" min="0" placeholder="250" />
                 </label>
                 <label class="mc-field" for="minibia-copilot-auto-heal-hp-hotkey">
@@ -13025,7 +13025,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
                   <input type="number" id="minibia-copilot-auto-heal-hp-hotkey" min="1" max="12" placeholder="1" />
                 </label>
                 <label class="mc-field" for="minibia-copilot-auto-heal-min-mana">
-                  <span class="mc-field-label">Mana</span>
+                  <span class="mc-field-label">Mana:</span>
                   <input type="number" id="minibia-copilot-auto-heal-min-mana" min="0" placeholder="150" />
                 </label>
                 <label class="mc-field" for="minibia-copilot-auto-heal-mana-hotkey">
@@ -13033,7 +13033,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
                   <input type="number" id="minibia-copilot-auto-heal-mana-hotkey" min="1" max="12" placeholder="2" />
                 </label>
               </div>
-              <div class="mc-small-note">Chequeo de 20 veces/seg. el HP se cura antes que el mana.</div>
+              <div class="mc-small-note">El HP se cura antes que el mana.</div>
             </div>
           </div>
 
@@ -13068,7 +13068,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
               </label>
               <label class="mc-toggle">
                 <input type="checkbox" id="minibia-copilot-equip-ring-autoswap" />
-                <span>Intercambiar automaticamente el anillo equivocado</span>
+                <span>Intercambio Automatico del anillo equivocado</span>
               </label>
               <div class="mc-small-note">Utiliza el anillo selecionado, El cambio automatico requiere un espacio vacio en la mochila.</div>
             </div>
@@ -13104,7 +13104,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
               </label>
               <label class="mc-toggle">
                 <input type="checkbox" id="minibia-copilot-equip-amulet-autoswap" />
-                <span>Intercambiar automaticamente el amuleto equivocado</span>
+                <span>Intercambio Automatico del amuleto equivocado</span>
               </label>
               <div class="mc-small-note">Por defecto usa el Stone Skin Amulet. El cambio automatico requiere un espacio vacio en la mochila.</div>
             </div>
