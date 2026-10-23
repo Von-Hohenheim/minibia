@@ -10841,7 +10841,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     };
 
     if (overlayButton) {
-      overlayButton.textContent = status?.config?.overlayEnabled ? "Disable Overlay" : "Enable Overlay";
+      overlayButton.textContent = status?.config?.overlayEnabled ? "Desactivar Overlay" : "Activar Overlay";
     }
 
     if (overlayLabel) {
@@ -11696,7 +11696,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
 
     const names = bot.attack?.getPriorityTargets?.() || [];
     if (!names.length) {
-      list.innerHTML = '<div class="mc-small-note">No has agregado ningun monster.</div>';
+      list.innerHTML = '<div class="mc-small-note">No has agregado ningun moustro.</div>';
     } else {
       list.innerHTML = names.map((name, index) => (
         `<div class="mc-priority-row" data-name="${escapeHtml(name)}">` +
@@ -12938,7 +12938,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
             <button type="button" class="mc-small-button" id="minibia-copilot-xray-overlay-toggle">Disable Overlay</button>
             <div class="mc-small-note" id="minibia-copilot-xray-overlay-status">Overlay: on</div>
             <label class="mc-field" for="minibia-copilot-xray-floor-select">
-              <span class="mc-field-label">Floor Filter</span>
+              <span class="mc-field-label">Floor</span>
               <select id="minibia-copilot-xray-floor-select">
                 <option value="all">All floors</option>
               </select>
