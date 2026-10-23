@@ -5,20 +5,32 @@ window.__minibiaCopilotBundle =
 window.__minibiaCopilotBundle.installAntiBotModule =
   function installAntiBotModule(bot) {
     const target = "anti-bot rune check";
+    const cooldownMs = 5000;
+    const noticeDurationMs = 5000;
+
     let lastAlert = 0;
     let originalHandler = null;
     let prototype = null;
     let retryTimer = null;
+    let noticeTimer = null;
 
     function detect(message) {
       if (!String(message ?? "").toLowerCase().includes(target)) {
-        return;
+        return false;
       }
 
-      if (Date.now() - lastAlert < 5000) return;
-      lastAlert = Date.now();
+      const now = Date.now();
 
-      console.warn("[AntiBot] ¡Comprobación detectada!", message);
+      if (now - lastAlert < cooldownMs) {
+        return true;
+      }
+
+      lastAlert = now;
+
+      console.warn(
+        "[AntiBot] ¡Comprobación detectada!",
+        message
+      );
 
       try {
         if (typeof bot.playAlarm === "function") {
@@ -28,7 +40,9 @@ window.__minibiaCopilotBundle.installAntiBotModule =
         console.error("[AntiBot] Error de alarma:", error);
       }
 
-      let notice = document.getElementById("minibia-antibot-notice");
+      let notice = document.getElementById(
+        "minibia-antibot-notice"
+      );
 
       if (!notice) {
         notice = document.createElement("div");
@@ -41,10 +55,13 @@ window.__minibiaCopilotBundle.installAntiBotModule =
           transform: "translateX(-50%)",
           zIndex: "2147483647",
           background: "#8b0000",
-          color: "white",
+          color: "#ffffff",
           padding: "16px 24px",
+          border: "2px solid #ff5555",
           borderRadius: "8px",
-          font: "bold 18px sans-serif"
+          font: "bold 18px sans-serif",
+          boxShadow: "0 4px 20px #0009",
+          textAlign: "center"
         });
 
         document.body.appendChild(notice);
@@ -52,6 +69,20 @@ window.__minibiaCopilotBundle.installAntiBotModule =
 
       notice.textContent =
         "⚠ ANTI-BOT RUNE CHECK — Atiéndelo manualmente";
+
+      notice.style.display = "block";
+
+      // Reinicia el temporizador para la alerta actual.
+      if (noticeTimer !== null) {
+        clearTimeout(noticeTimer);
+      }
+
+      noticeTimer = setTimeout(() => {
+        notice.remove();
+        noticeTimer = null;
+      }, noticeDurationMs);
+
+      return true;
     }
 
     function install() {
@@ -60,13 +91,22 @@ window.__minibiaCopilotBundle.installAntiBotModule =
           ? PacketHandler
           : window.PacketHandler;
 
-      if (!Handler?.prototype ||
-          typeof Handler.prototype.handleServerMessage !== "function") {
+      if (
+        !Handler?.prototype ||
+        typeof Handler.prototype.handleServerMessage !== "function"
+      ) {
         return false;
+      }
+
+      // Evita instalar el mismo hook más de una vez.
+      if (prototype) {
+        return true;
       }
 
       prototype = Handler.prototype;
       originalHandler = prototype.handleServerMessage;
+
+      const previousHandler = originalHandler;
 
       prototype.handleServerMessage = function (message) {
         try {
@@ -75,7 +115,7 @@ window.__minibiaCopilotBundle.installAntiBotModule =
           console.error("[AntiBot] Error:", error);
         }
 
-        return originalHandler.apply(this, arguments);
+        return previousHandler.apply(this, arguments);
       };
 
       console.log("[AntiBot] Detector instalado");
@@ -88,12 +128,28 @@ window.__minibiaCopilotBundle.installAntiBotModule =
         retryTimer = null;
       }
 
-      if (prototype && originalHandler &&
-          prototype.handleServerMessage !== originalHandler) {
-        prototype.handleServerMessage = originalHandler;
+      if (noticeTimer !== null) {
+        clearTimeout(noticeTimer);
+        noticeTimer = null;
       }
 
-      document.getElementById("minibia-antibot-notice")?.remove();
+      if (
+        prototype &&
+        originalHandler &&
+        prototype.handleServerMessage
+      ) {
+        // Restaura solo si nuestro hook sigue instalado.
+        const currentHandler = prototype.handleServerMessage;
+
+        if (currentHandler !== originalHandler) {
+          prototype.handleServerMessage = originalHandler;
+        }
+      }
+
+      document
+        .getElementById("minibia-antibot-notice")
+        ?.remove();
+
       prototype = null;
       originalHandler = null;
     }
@@ -113,7 +169,10 @@ window.__minibiaCopilotBundle.installAntiBotModule =
 
     bot.antiBot = {
       checkMessage: detect,
-      status: () => ({ installed: !!prototype }),
+      status: () => ({
+        installed: !!prototype,
+        lastAlertAt: lastAlert
+      }),
       stop: cleanup
     };
   };
