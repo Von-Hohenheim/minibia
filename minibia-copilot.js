@@ -11236,9 +11236,9 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
 
     if (statusLabel) {
       if (!info) {
-        statusLabel.textContent = "Status: no data (click Refresh)";
+        statusLabel.textContent = "Status: no hay datos (click Refresh)";
       } else if (!info.active) {
-        statusLabel.textContent = "Status: no active session (click Start)";
+        statusLabel.textContent = "Status: ninguna sesion activa (click Start)";
       } else if (info.paused) {
         statusLabel.textContent = `Status: paused (${formatElapsed(info.elapsedMs)})`;
       } else {
@@ -12936,7 +12936,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
           <div class="mc-section">
             <div class="mc-label">Hunt Analyzer</div>
             <div class="mc-stack">
-              <div class="mc-small-note" id="minibia-copilot-hunt-status">Status: no session</div>
+              <div class="mc-small-note" id="minibia-copilot-hunt-status">Status: nada pa</div>
               <div class="mc-hunt-grid" id="minibia-copilot-hunt-stats" hidden>
                 <div class="mc-hunt-cell"><span class="mc-field-label">Tiempo</span><span data-key="elapsed">—</span></div>
                 <div class="mc-hunt-cell"><span class="mc-field-label">XP / h</span><span data-key="xpPerHour">—</span></div>
@@ -12949,7 +12949,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
               <div class="mc-small-note" id="minibia-copilot-hunt-top-loot">Top loot: —</div>
               <label class="mc-toggle">
                 <input type="checkbox" id="minibia-copilot-hunt-autopoll" />
-                <span>Auto-refresh every 10s</span>
+                <span>Auto-refresh cada 10 segundos</span>
               </label>
               <div class="mc-actions mc-actions-inline-three">
                 <button type="button" class="mc-small-button" id="minibia-copilot-hunt-refresh">Refresh</button>
