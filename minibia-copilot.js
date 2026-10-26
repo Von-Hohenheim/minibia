@@ -12934,6 +12934,37 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
           </div>
 
           <div class="mc-section">
+            <div class="mc-label">Hunt Analyzer</div>
+            <div class="mc-stack">
+              <div class="mc-small-note" id="minibia-copilot-hunt-status">Status: no session</div>
+              <div class="mc-hunt-grid" id="minibia-copilot-hunt-stats" hidden>
+                <div class="mc-hunt-cell"><span class="mc-field-label">Tiempo</span><span data-key="elapsed">—</span></div>
+                <div class="mc-hunt-cell"><span class="mc-field-label">XP / h</span><span data-key="xpPerHour">—</span></div>
+                <div class="mc-hunt-cell"><span class="mc-field-label">Gold / h</span><span data-key="goldPerHour">—</span></div>
+                <div class="mc-hunt-cell"><span class="mc-field-label">Kills / h</span><span data-key="killsPerHour">—</span></div>
+                <div class="mc-hunt-cell"><span class="mc-field-label">Total XP</span><span data-key="xp">—</span></div>
+                <div class="mc-hunt-cell"><span class="mc-field-label">Total Gold</span><span data-key="gold">—</span></div>
+              </div>
+              <div class="mc-small-note" id="minibia-copilot-hunt-top-monster">Top kill: —</div>
+              <div class="mc-small-note" id="minibia-copilot-hunt-top-loot">Top loot: —</div>
+              <label class="mc-toggle">
+                <input type="checkbox" id="minibia-copilot-hunt-autopoll" />
+                <span>Auto-refresh every 10s</span>
+              </label>
+              <div class="mc-actions mc-actions-inline-three">
+                <button type="button" class="mc-small-button" id="minibia-copilot-hunt-refresh">Refresh</button>
+                <button type="button" class="mc-small-button" id="minibia-copilot-hunt-start">Start</button>
+                <button type="button" class="mc-small-button" id="minibia-copilot-hunt-reset">Reset</button>
+              </div>
+              <div class="mc-actions mc-actions-inline-two">
+                <button type="button" class="mc-small-button" id="minibia-copilot-hunt-pause">Pause / Resume</button>
+                <button type="button" class="mc-small-button" id="minibia-copilot-hunt-stop">Stop</button>
+              </div>
+            </div>
+          </div>
+
+
+          <div class="mc-section">
             <div class="mc-label">X-Ray</div>
             <button type="button" class="mc-small-button" id="minibia-copilot-xray-overlay-toggle">Disable Overlay</button>
             <div class="mc-small-note" id="minibia-copilot-xray-overlay-status">Overlay: on</div>
