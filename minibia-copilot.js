@@ -2974,7 +2974,7 @@ window.__minibiaCopilotBundle.installAutoMagicShieldModule = function installAut
 };
 window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
-window.__minibiaBotBundle.installAutoAttackModule = function installAutoAttackModule(bot) {
+window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAttackModule(bot) {
   const configStorageKey = "minibiaCopilot.attack.config";
   const state = {
     running: false,
