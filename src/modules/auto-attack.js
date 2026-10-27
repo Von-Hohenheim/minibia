@@ -444,7 +444,7 @@ window.__minibiaBotBundle.installAutoAttackModule = function installAutoAttackMo
     const playerPosition = normalizePosition(bot.getPlayerPosition());
     const targetPosition = normalizePosition(target.getPosition?.() || target.__position);
     if (!playerPosition || !targetPosition || playerPosition.z !== targetPosition.z) {
-      bot.logDebug("auto attack chase target on different floor", {
+      bot.log("auto attack chase target on different floor", {
         targetId: target.id,
         targetName: target.name || "Mob",
         playerZ: playerPosition?.z,
@@ -454,7 +454,7 @@ window.__minibiaBotBundle.installAutoAttackModule = function installAutoAttackMo
     }
 
     if (!findNearbyMonster(target)) {
-      bot.logDebug("auto attack chase target no longer nearby", {
+      bot.log("auto attack chase target no longer nearby", {
         targetId: target.id,
         targetName: target.name || "Mob",
       });
@@ -476,7 +476,7 @@ window.__minibiaBotBundle.installAutoAttackModule = function installAutoAttackMo
     if (!adjacentPosition) {
       if (!state.lastFollowStallAt) {
         state.lastFollowStallAt = now;
-        bot.logDebug("auto attack chase no adjacent tile", {
+        bot.log("auto attack chase no adjacent tile", {
           targetId: target.id,
           targetName: target.name || "Mob",
           targetPos: targetPosition,
@@ -624,7 +624,7 @@ window.__minibiaBotBundle.installAutoAttackModule = function installAutoAttackMo
     const playerPos = normalizePosition(bot.getPlayerPosition());
 
     if (resetTargetIfTooFar()) {
-      bot.logDebug("auto attack no valid targets near enough");
+      bot.log("auto attack no valid targets near enough");
       return true;
     }
 
@@ -640,7 +640,7 @@ window.__minibiaBotBundle.installAutoAttackModule = function installAutoAttackMo
         return triggerAttack(now) || true;
       }
 
-      bot.logDebug("auto attack melee no target", { position: playerPos });
+      bot.log("auto attack melee no target", { position: playerPos });
     }
 
     if (getCurrentTarget()) {
@@ -649,7 +649,7 @@ window.__minibiaBotBundle.installAutoAttackModule = function installAutoAttackMo
 
     const nearbyCount = getNearbyMonsters().length;
     const attacked = triggerAttack(now);
-    bot.logDebug("auto attack trigger", {
+    bot.log("auto attack trigger", {
       attacked,
       nearbyMonsters: nearbyCount,
       hasCurrentTarget: !!getCurrentTarget(),
