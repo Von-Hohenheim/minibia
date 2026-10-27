@@ -12675,41 +12675,24 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
         <div class="mc-tab-pane" data-tab="combat" hidden>
           <div class="mc-section">
             <div class="mc-label">Auto Attack</div>
-            <div class="mc-stack">
-              <label class="mc-toggle">
-                <input type="checkbox" id="minibia-copilot-auto-attack-enabled" />
-                <span>Activar Auto Attack</span>
+             <div class="mb-stack">
+              <label class="mb-toggle">
+                <input type="checkbox" id="minibia-bot-auto-attack-enabled" />
+                <span>Enable Auto Attack</span>
               </label>
-              <label class="mc-toggle">
-                <input type="checkbox" id="minibia-copilot-auto-attack-melee" />
-                <span>Mele</span>
+              <label class="mb-toggle">
+                <input type="checkbox" id="minibia-bot-auto-attack-melee" />
+                <span>Melee Mode</span>
               </label>
-              <div class="mc-priority-block">
-                <div class="mc-field-label">Prioridad (top = primero)</div>
-                <div class="mc-inline">
-                  <input type="text" id="minibia-copilot-attack-priority-input" placeholder="Monster" />
-                  <button type="button" class="mc-small-button" id="minibia-copilot-attack-priority-add">Add</button>
-                </div>
-                <div class="mc-list" id="minibia-copilot-attack-priority-list"></div>
-                <div class="mc-small-note">Los monstruos cercanos siempre son atacados primero, luego la lista de prioridad, y después el mas cercano.</div>
-              </div>
-              <label class="mc-toggle">
-                <input type="checkbox" id="minibia-copilot-auto-attack-kite" />
-                <span>Mantener Distancia</span>
+              <label class="mb-field" for="minibia-bot-auto-attack-hotkey">
+                <span class="mb-field-label">Target Hotkey (1-12)</span>
+                <input type="number" id="minibia-bot-auto-attack-hotkey" min="1" max="12" placeholder="3" />
               </label>
-              <label class="mc-field" for="minibia-copilot-auto-attack-safe-distance">
-                <span class="mc-field-label">Mantener Distancia (sqm)</span>
-                <input type="number" id="minibia-copilot-auto-attack-safe-distance" min="1" max="7" placeholder="4" />
+              <label class="mb-field" for="minibia-bot-auto-attack-rune-hotkey">
+                <span class="mb-field-label">Rune Hotkey (1-12)</span>
+                <input type="number" id="minibia-bot-auto-attack-rune-hotkey" min="1" max="12" placeholder="4" />
               </label>
-              <details>
-                <summary style="cursor:pointer;color:#8c7a52;font-size:11px;">Avanzado (rune hotkey)</summary>
-                <div class="mc-stack" style="margin-top:6px;">
-                  <label class="mc-field" for="minibia-copilot-auto-attack-rune-hotkey">
-                    <span class="mc-field-label">Rune Hotkey (1-12)</span>
-                    <input type="number" id="minibia-copilot-auto-attack-rune-hotkey" min="1" max="12" placeholder="optional" />
-                  </label>
-                </div>
-              </details>
+              <div class="mb-small-note">Melee mode uses the target hotkey, then walks adjacent to the target. Non-melee mode uses the target hotkey to acquire a target and the rune hotkey to cast on that target.</div>
             </div>
           </div>
 
