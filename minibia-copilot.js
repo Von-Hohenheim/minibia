@@ -13221,32 +13221,32 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
             <div class="mc-label">Cave Bot</div>
             <div class="mc-stack">
               <label class="mc-field" for="minibia-copilot-cave-preset-select">
-                <span class="mc-field-label">Active preset</span>
+                <span class="mc-field-label">Cave Activa</span>
                 <select id="minibia-copilot-cave-preset-select"></select>
               </label>
               <div class="mc-actions mc-actions-inline-two">
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-preset-new">New Preset</button>
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-preset-delete">Delete</button>
+                <button type="button" class="mc-small-button" id="minibia-copilot-cave-preset-new">Nueva Cave</button>
+                <button type="button" class="mc-small-button" id="minibia-copilot-cave-preset-delete">Eliminar</button>
               </div>
-              <div class="mc-field-label">Record waypoint at current spot</div>
+              <div class="mc-field-label">Registrar punto de referencia en la ubicación actual</div>
               <div class="mc-actions mc-actions-inline-two">
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-record">+ Node</button>
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-record-stand">+ Stand</button>
+                <button type="button" class="mc-small-button" id="minibia-copilot-cave-record">+ Nodo</button>
+                <button type="button" class="mc-small-button" id="minibia-copilot-cave-record-stand">+ Pararse</button>
               </div>
               <div class="mc-actions mc-actions-inline-three">
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-record-rope">+ Rope</button>
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-record-ladder">+ Ladder</button>
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-record-shovel">+ Shovel</button>
+                <button type="button" class="mc-small-button" id="minibia-copilot-cave-record-rope">+ Cuerda</button>
+                <button type="button" class="mc-small-button" id="minibia-copilot-cave-record-ladder">+ Escalera</button>
+                <button type="button" class="mc-small-button" id="minibia-copilot-cave-record-shovel">+ Pala</button>
               </div>
               <div class="mc-actions mc-actions-inline-two">
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-record-use">+ Use Tile</button>
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-remove-last">Remove Last</button>
+                <button type="button" class="mc-small-button" id="minibia-copilot-cave-record-use">+ Usar Piso</button>
+                <button type="button" class="mc-small-button" id="minibia-copilot-cave-remove-last">Eliminar Ultimo</button>
               </div>
-              <div class="mc-small-note" id="minibia-copilot-cave-closest">Closest start: no waypoints</div>
-              <div class="mc-small-note" id="minibia-copilot-cave-transition-status">Transitions learned: none</div>
+              <div class="mc-small-note" id="minibia-copilot-cave-closest">Inicio cercano: sin puntos de ruta</div>
+              <div class="mc-small-note" id="minibia-copilot-cave-transition-status">Transiciones aprendidas: ninguno</div>
               <div class="mc-actions mc-actions-inline-two">
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-start">Start</button>
-                <button type="button" class="mc-small-button" id="minibia-copilot-cave-stop">Stop</button>
+                <button type="button" class="mc-small-button" id="minibia-copilot-cave-start">Inicio</button>
+                <button type="button" class="mc-small-button" id="minibia-copilot-cave-stop">Detener</button>
               </div>
               <div class="mc-small-note" id="minibia-copilot-cave-status">Status: no waypoints</div>
             </div>
