@@ -11054,7 +11054,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
       if (!presetNames.length) {
         const option = document.createElement("option");
         option.value = "";
-        option.textContent = "No saved presets";
+        option.textContent = "No hay Cuevas Guardadas";
         select.appendChild(option);
         select.disabled = true;
       } else {
@@ -11091,12 +11091,12 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     const route = bot.cave?.getRoute?.() || [];
 
     if (!position) {
-      label.textContent = "Closest start: current position unavailable";
+      label.textContent = "Inicio cercano: ubicacion actual no disponible";
       return;
     }
 
     if (!route.length) {
-      label.textContent = "Closest start: no waypoints";
+      label.textContent = "Inicio cercano: sin waypoints";
       return;
     }
 
@@ -11104,11 +11104,11 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     const waypoint = route[closestIndex];
 
     if (!waypoint) {
-      label.textContent = "Closest start: unavailable";
+      label.textContent = "Inicio cercano: no disponible";
       return;
     }
 
-    label.textContent = `Closest start: ${closestIndex + 1}. ${waypoint.x}, ${waypoint.y}, ${waypoint.z}`;
+    label.textContent = `Inicio cercano: ${closestIndex + 1}. ${waypoint.x}, ${waypoint.y}, ${waypoint.z}`;
   }
 
   function refreshCaveTransitionStatus() {
@@ -11117,7 +11117,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
 
     const transitions = bot.cave?.getTransitions?.() || [];
     if (!transitions.length) {
-      label.textContent = "Transitions learned: none";
+      label.textContent = "Transicion aprendida: ninguna";
       return;
     }
 
@@ -11126,13 +11126,13 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
       .sort((a, b) => Number(b?.lastSeenAt || 0) - Number(a?.lastSeenAt || 0))[0];
 
     if (!latest?.from || !latest?.to) {
-      label.textContent = `Transitions learned: ${transitions.length}`;
+      label.textContent = `Transicion aprendida: ${transitions.length}`;
       return;
     }
 
     const extra = transitions.length > 1 ? ` (+${transitions.length - 1} more)` : "";
     label.textContent =
-      `Transitions learned: ${latest.from.x}, ${latest.from.y}, ${latest.from.z} -> ` +
+      `Transicion aprendida: ${latest.from.x}, ${latest.from.y}, ${latest.from.z} -> ` +
       `${latest.to.x}, ${latest.to.y}, ${latest.to.z}${extra}`;
   }
 
