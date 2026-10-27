@@ -2975,7 +2975,7 @@ window.__minibiaCopilotBundle.installAutoMagicShieldModule = function installAut
 window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaBotBundle.installAutoAttackModule = function installAutoAttackModule(bot) {
-  const configStorageKey = "minibiaBot.attack.config";
+  const configStorageKey = "minibiaCopilot.attack.config";
   const state = {
     running: false,
     timerId: null,
