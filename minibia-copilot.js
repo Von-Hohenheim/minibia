@@ -13952,7 +13952,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
 
     if (cavePresetNewButton) {
       cavePresetNewButton.addEventListener("click", () => {
-        const name = window.prompt("Name the new cave preset:");
+        const name = window.prompt("Nombre de la Cueva:");
         if (name == null) {
           return;
         }
