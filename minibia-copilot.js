@@ -12692,7 +12692,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
                 <span class="mb-field-label">Rune Hotkey (1-12)</span>
                 <input type="number" id="minibia-bot-auto-attack-rune-hotkey" min="1" max="12" placeholder="4" />
               </label>
-              <div class="mb-small-note">Melee mode uses the target hotkey, then walks adjacent to the target. Non-melee mode uses the target hotkey to acquire a target and the rune hotkey to cast on that target.</div>
+              <div class="mb-small-note">El modo cuerpo a cuerpo utiliza la tecla de acceso rápido para seleccionar un objetivo y luego se coloca junto a él.</div>
             </div>
           </div>
 
