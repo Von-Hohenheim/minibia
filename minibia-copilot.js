@@ -12680,19 +12680,19 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
                 <input type="checkbox" id="minibia-bot-auto-attack-enabled" />
                 <span>Enable Auto Attack</span>
               </label>
-              <label class="mb-toggle">
+              <label class="mc-toggle">
                 <input type="checkbox" id="minibia-bot-auto-attack-melee" />
                 <span>Melee Mode</span>
               </label>
-              <label class="mb-field" for="minibia-bot-auto-attack-hotkey">
-                <span class="mb-field-label">Target Hotkey (1-12)</span>
+              <label class="mc-field" for="minibia-bot-auto-attack-hotkey">
+                <span class="mc-field-label">Target Hotkey (1-12)</span>
                 <input type="number" id="minibia-bot-auto-attack-hotkey" min="1" max="12" placeholder="3" />
               </label>
-              <label class="mb-field" for="minibia-bot-auto-attack-rune-hotkey">
-                <span class="mb-field-label">Rune Hotkey (1-12)</span>
+              <label class="mc-field" for="minibia-bot-auto-attack-rune-hotkey">
+                <span class="mc-field-label">Rune Hotkey (1-12)</span>
                 <input type="number" id="minibia-bot-auto-attack-rune-hotkey" min="1" max="12" placeholder="4" />
               </label>
-              <div class="mb-small-note">El modo cuerpo a cuerpo utiliza la tecla de acceso rápido para seleccionar un objetivo y luego se coloca junto a él.</div>
+              <div class="mc-small-note">El modo cuerpo a cuerpo utiliza la tecla de acceso rápido para seleccionar un objetivo y luego se coloca junto a él.</div>
             </div>
           </div>
 
