@@ -12677,14 +12677,17 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
           <div class="mc-section">
             <div class="mc-label">Auto Attack</div>
              <div class="mb-stack">
+
               <label class="mc-toggle">
                 <input type="checkbox" id="minibia-bot-auto-attack-enabled" />
                 <span>Enable Auto Attack</span>
               </label>
+
               <label class="mc-toggle">
                 <input type="checkbox" id="minibia-bot-auto-attack-melee" />
                 <span>Melee Mode</span>
               </label>
+      
               <label class="mc-field" for="minibia-bot-auto-attack-hotkey">
                 <span class="mc-field-label">Target Hotkey (1-12)</span>
                 <input type="number" id="minibia-bot-auto-attack-hotkey" min="1" max="12" placeholder="3" />
