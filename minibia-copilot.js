@@ -12672,11 +12672,12 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
           </div>
         </div>
 
+
         <div class="mc-tab-pane" data-tab="combat" hidden>
           <div class="mc-section">
             <div class="mc-label">Auto Attack</div>
              <div class="mb-stack">
-              <label class="mb-toggle">
+              <label class="mc-toggle">
                 <input type="checkbox" id="minibia-bot-auto-attack-enabled" />
                 <span>Enable Auto Attack</span>
               </label>
