@@ -2972,10 +2972,10 @@ window.__minibiaCopilotBundle.installAutoMagicShieldModule = function installAut
     config,
   };
 };
-window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+window.__minibiaBotBundle = window.__minibiaBotBundle || {};
 
-window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAttackModule(bot) {
-  const configStorageKey = "minibiaCopilot.attack.config";
+window.__minibiaBotBundle.installAutoAttackModule = function installAutoAttackModule(bot) {
+  const configStorageKey = "minibiaBot.attack.config";
   const state = {
     running: false,
     timerId: null,
@@ -3208,7 +3208,7 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
 
     const followTarget = getCurrentFollowTarget();
     if (followTarget && followTarget.id === state.engagedTargetId) {
-      return followTarget;
+      return findNearbyMonster(followTarget) || followTarget;
     }
 
     const nearbyTarget = findNearbyMonsterById(state.engagedTargetId);
@@ -8338,126 +8338,392 @@ window.__minibiaCopilotBundle.installHuntModule = function installHuntModule(bot
     getLastInfo: () => state.lastInfo,
   };
 };
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
-window.__minibiaCopilotBundle =
-  window.__minibiaCopilotBundle || {};
+window.__minibiaCopilotBundle.installAntiBotModule = function installAntiBotModule(bot) {
+  const configStorageKey = "minibiaCopilot.antiBot.config";
+  const noticeId = "minibia-antibot-notice";
+  const checkRe = /anti-?bot rune check(?:\s+in\s+(\d+)\s+seconds?)?/i;
+  const passedRe = /verification passed/i;
 
-window.__minibiaCopilotBundle.installAntiBotModule =
-  function installAntiBotModule(bot) {
-    const target = "anti-bot rune check";
-    let lastAlert = 0;
-    let originalHandler = null;
-    let prototype = null;
-    let retryTimer = null;
+  const config = Object.assign(
+    { enabled: true, cooldownMs: 3000, noticeMaxMs: 90000, pollMs: 1000, debug: false },
+    bot.storage.get(configStorageKey, {})
+  );
 
-    function detect(message) {
-      if (!String(message ?? "").toLowerCase().includes(target)) {
-        return;
-      }
+  const state = {
+    running: false,
+    lastAlertAt: 0,
+    lastSeconds: null,
+    lastSource: null,
+    debugLogged: 0,
+  };
 
-      if (Date.now() - lastAlert < 5000) return;
-      lastAlert = Date.now();
+  let packetHook = null;       // { proto, original, wrapper }
+  let cancelUnsub = null;
+  let installTimer = null;
+  let installAttempts = 0;
+  let pollTimer = null;
+  let noticeTimer = null;
+  let audioCtx = null;
+  let originalTitle = null;
+  let titleTimer = null;
+  const seen = new Set();
+  const gestureEvents = ["pointerdown", "keydown"];
 
-      console.warn("[AntiBot] ¡Comprobación detectada!", message);
+  function persistConfig() {
+    bot.storage.set(configStorageKey, { ...config });
+  }
 
+  // ---------- Extracción de texto ----------
+  function extractText(value, depth = 0) {
+    if (value == null || depth > 2) return "";
+    if (typeof value === "string") return value;
+    if (Array.isArray(value)) return value.map((v) => extractText(v, depth + 1)).join(" ");
+    if (typeof value === "object") {
+      const direct = value.message ?? value.text ?? value.msg ?? value.content;
+      if (direct != null) return extractText(direct, depth + 1);
       try {
-        if (typeof bot.playAlarm === "function") {
-          bot.playAlarm();
-        }
+        return JSON.stringify(value).slice(0, 2000);
       } catch (error) {
-        console.error("[AntiBot] Error de alarma:", error);
+        return "";
       }
+    }
+    return "";
+  }
 
-      let notice = document.getElementById("minibia-antibot-notice");
+  // ---------- Alarma ----------
+  function beep() {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return false;
+      audioCtx = audioCtx || new Ctx();
+      audioCtx.resume?.();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "square";
+      osc.frequency.value = 880;
+      gain.gain.value = 0.2;
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 1);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
 
-      if (!notice) {
-        notice = document.createElement("div");
-        notice.id = "minibia-antibot-notice";
+  function raiseAlarm() {
+    let played = false;
+    try {
+      played = !!bot.playAlarm?.();
+    } catch (error) {
+      console.error("[AntiBot] alarm error", error);
+    }
+    beep(); // respaldo siempre: si el audio principal fue bloqueado, esto avisa igual
+    return played;
+  }
 
-        Object.assign(notice.style, {
-          position: "fixed",
-          top: "20px",
-          left: "50%",
-          transform: "translateX(-50%)",
-          zIndex: "2147483647",
-          background: "#8b0000",
-          color: "white",
-          padding: "16px 24px",
-          borderRadius: "8px",
-          font: "bold 18px sans-serif"
-        });
-
-        document.body.appendChild(notice);
+  function unlockOnGesture() {
+    try { bot.unlockAudio?.(); } catch (error) {}
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) {
+        audioCtx = audioCtx || new Ctx();
+        audioCtx.resume?.();
       }
+    } catch (error) {}
+  }
 
-      notice.textContent =
-        "⚠ ANTI-BOT RUNE CHECK — Atiéndelo manualmente";
+  function attachGestureListeners() {
+    gestureEvents.forEach((name) =>
+      window.addEventListener(name, unlockOnGesture, { once: true, capture: true })
+    );
+  }
+
+  function detachGestureListeners() {
+    gestureEvents.forEach((name) =>
+      window.removeEventListener(name, unlockOnGesture, { capture: true })
+    );
+  }
+
+  // ---------- Aviso visual ----------
+  function startTitleFlash() {
+    if (titleTimer != null) return;
+    originalTitle = document.title;
+    let on = false;
+    titleTimer = window.setInterval(() => {
+      on = !on;
+      document.title = on ? "⚠ ANTI-BOT CHECK" : originalTitle;
+    }, 700);
+  }
+
+  function stopTitleFlash() {
+    if (titleTimer != null) {
+      window.clearInterval(titleTimer);
+      titleTimer = null;
+    }
+    if (originalTitle != null) {
+      document.title = originalTitle;
+      originalTitle = null;
+    }
+  }
+
+  function showNotice(seconds) {
+    let notice = document.getElementById(noticeId);
+    if (!notice) {
+      notice = document.createElement("div");
+      notice.id = noticeId;
+      Object.assign(notice.style, {
+        position: "fixed", top: "20px", left: "50%", transform: "translateX(-50%)",
+        zIndex: "2147483647", background: "#8b0000", color: "#fff",
+        padding: "16px 24px", border: "2px solid #ff5555", borderRadius: "8px",
+        font: "bold 18px sans-serif", boxShadow: "0 4px 20px #0009", textAlign: "center",
+        pointerEvents: "none",
+      });
+      document.body.appendChild(notice);
     }
 
-    function install() {
-      const Handler =
-        typeof PacketHandler !== "undefined"
-          ? PacketHandler
-          : window.PacketHandler;
+    notice.textContent = seconds != null
+      ? `⚠ ANTI-BOT RUNE CHECK en ${seconds}s — Atiéndelo manualmente`
+      : "⚠ ANTI-BOT RUNE CHECK — Atiéndelo manualmente";
 
-      if (!Handler?.prototype ||
-          typeof Handler.prototype.handleServerMessage !== "function") {
-        return false;
-      }
+    startTitleFlash();
+    if (noticeTimer != null) window.clearTimeout(noticeTimer);
+    noticeTimer = window.setTimeout(hideNotice, config.noticeMaxMs);
+  }
 
-      prototype = Handler.prototype;
-      originalHandler = prototype.handleServerMessage;
+  function hideNotice() {
+    if (noticeTimer != null) {
+      window.clearTimeout(noticeTimer);
+      noticeTimer = null;
+    }
+    document.getElementById(noticeId)?.remove();
+    stopTitleFlash();
+  }
 
-      prototype.handleServerMessage = function (message) {
-        try {
-          detect(message);
-        } catch (error) {
-          console.error("[AntiBot] Error:", error);
-        }
+  // ---------- Lógica de detección ----------
+  function handleText(text, source) {
+    if (!state.running || !text) return false;
 
-        return originalHandler.apply(this, arguments);
-      };
-
-      console.log("[AntiBot] Detector instalado");
+    if (passedRe.test(text)) {
+      hideNotice();
+      bot.log("anti-bot verification passed", { source });
       return true;
     }
 
-    function cleanup() {
-      if (retryTimer !== null) {
-        clearInterval(retryTimer);
-        retryTimer = null;
-      }
+    const match = checkRe.exec(text);
+    if (!match) return false;
 
-      if (prototype && originalHandler &&
-          prototype.handleServerMessage !== originalHandler) {
-        prototype.handleServerMessage = originalHandler;
-      }
+    const now = Date.now();
+    if (now - state.lastAlertAt < config.cooldownMs) return true; // misma alerta vista por otra vía
 
-      document.getElementById("minibia-antibot-notice")?.remove();
-      prototype = null;
-      originalHandler = null;
+    state.lastAlertAt = now;
+    state.lastSeconds = match[1] != null ? Number(match[1]) : null;
+    state.lastSource = source;
+
+    console.warn("[AntiBot] ¡Comprobación detectada!", { text, source });
+    raiseAlarm();
+    showNotice(state.lastSeconds);
+    return true;
+  }
+
+  // ---------- Hook 1: PacketHandler.handleServerMessage ----------
+  function installPacketHook() {
+    if (packetHook) return true;
+
+    const Handler = typeof PacketHandler !== "undefined" ? PacketHandler : window.PacketHandler;
+    const proto = Handler?.prototype;
+    if (!proto || typeof proto.handleServerMessage !== "function") return false;
+
+    const original = proto.handleServerMessage;
+    const wrapper = function () {
+      if (state.running) {
+        try {
+          for (let i = 0; i < arguments.length; i += 1) {
+            const text = extractText(arguments[i]);
+            if (config.debug && state.debugLogged < 20) {
+              state.debugLogged += 1;
+              console.log("[AntiBot][debug] handleServerMessage arg", typeof arguments[i], arguments[i], "->", text);
+            }
+            if (handleText(text, "packet")) break;
+          }
+        } catch (error) {
+          console.error("[AntiBot] packet hook error", error);
+        }
+      }
+      return original.apply(this, arguments);
+    };
+
+    proto.handleServerMessage = wrapper;
+    packetHook = { proto, original, wrapper };
+    bot.log("anti-bot packet hook installed");
+    return true;
+  }
+
+  function removePacketHook() {
+    if (!packetHook) return;
+    const { proto, original, wrapper } = packetHook;
+    // Solo restauramos si nadie parcheó encima; si no, el wrapper queda inerte (running=false).
+    if (proto.handleServerMessage === wrapper) {
+      proto.handleServerMessage = original;
     }
+    packetHook = null;
+  }
 
-    if (!install()) {
-      retryTimer = setInterval(() => {
-        if (install()) {
-          clearInterval(retryTimer);
-          retryTimer = null;
+  // ---------- Hook 2: mensajes rojos (setCancelMessage) ----------
+  function installCancelHook() {
+    if (cancelUnsub || typeof bot.onCancelMessage !== "function") return;
+    cancelUnsub = bot.onCancelMessage((message) => handleText(extractText(message), "cancel-message"));
+  }
+
+  function removeCancelHook() {
+    if (cancelUnsub) {
+      try { cancelUnsub(); } catch (error) {}
+      cancelUnsub = null;
+    }
+  }
+
+  // ---------- Hook 3: sondeo del chat ----------
+  function readChannelEntries() {
+    const channels = window.gameClient?.interface?.channelManager?.channels || [];
+    const out = [];
+    for (const channel of channels) {
+      for (const entry of channel?.__contents || []) {
+        out.push({
+          key: `${channel?.name}|${entry?.__time}|${entry?.message}`,
+          text: String(entry?.message || ""),
+        });
+      }
+    }
+    return out;
+  }
+
+  function seedSeen() {
+    readChannelEntries().forEach((entry) => seen.add(entry.key));
+  }
+
+  function pollChannels() {
+    if (!state.running) return;
+    try {
+      for (const entry of readChannelEntries()) {
+        if (seen.has(entry.key)) continue;
+        seen.add(entry.key);
+        handleText(entry.text, "channel");
+      }
+      if (seen.size > 2000) {
+        seen.clear();
+        seedSeen();
+      }
+    } catch (error) {
+      console.error("[AntiBot] poll error", error);
+    }
+  }
+
+  function logHookDiagnostics() {
+    const Handler = typeof PacketHandler !== "undefined" ? PacketHandler : window.PacketHandler;
+    console.warn("[AntiBot] no se pudo instalar el hook de PacketHandler.handleServerMessage", {
+      hasPacketHandler: !!Handler,
+      methods: Handler?.prototype
+        ? Object.getOwnPropertyNames(Handler.prototype).filter((n) => /message|chat|text/i.test(n))
+        : [],
+    });
+  }
+
+  // ---------- Ciclo de vida ----------
+  function start(overrides = {}) {
+    Object.assign(config, overrides, { enabled: true });
+    persistConfig();
+
+    if (state.running) return false;
+    state.running = true;
+    state.debugLogged = 0;
+
+    seedSeen();
+    attachGestureListeners();
+    installCancelHook();
+
+    installAttempts = 0;
+    if (!installPacketHook()) {
+      installTimer = window.setInterval(() => {
+        installAttempts += 1;
+        if (installPacketHook()) {
+          window.clearInterval(installTimer);
+          installTimer = null;
+        } else if (installAttempts === 30) {
+          logHookDiagnostics(); // el sondeo del chat sigue cubriendo mientras tanto
         }
       }, 1000);
     }
 
-    if (typeof bot.addCleanup === "function") {
-      bot.addCleanup(cleanup);
+    pollTimer = window.setInterval(pollChannels, Math.max(250, Number(config.pollMs) || 1000));
+    bot.log("anti-bot started");
+    return true;
+  }
+
+  function stop(options = {}) {
+    const shouldPersistEnabled = options.persistEnabled !== false;
+    state.running = false;
+
+    if (installTimer != null) { window.clearInterval(installTimer); installTimer = null; }
+    if (pollTimer != null) { window.clearInterval(pollTimer); pollTimer = null; }
+
+    removePacketHook();
+    removeCancelHook();
+    detachGestureListeners();
+    hideNotice();
+    seen.clear();
+
+    if (shouldPersistEnabled) {
+      config.enabled = false;
+      persistConfig();
     }
 
-    bot.antiBot = {
-      checkMessage: detect,
-      status: () => ({ installed: !!prototype }),
-      stop: cleanup
+    bot.log("anti-bot stopped");
+    return true;
+  }
+
+  function status() {
+    return {
+      running: state.running,
+      config: { ...config },
+      hooks: {
+        packet: !!packetHook,
+        cancelMessage: !!cancelUnsub,
+        channelPoll: pollTimer != null,
+      },
+      lastAlertAt: state.lastAlertAt,
+      lastSeconds: state.lastSeconds,
+      lastSource: state.lastSource,
     };
+  }
+
+  function updateConfig(next = {}) {
+    Object.assign(config, next);
+    persistConfig();
+    return { ...config };
+  }
+
+  bot.addCleanup(() => stop({ persistEnabled: false }));
+
+  bot.antiBot = {
+    start,
+    stop,
+    status,
+    updateConfig,
+    checkMessage: (text) => handleText(String(text || ""), "manual"),
+    debug(enabled = true) {
+      config.debug = !!enabled;
+      state.debugLogged = 0;
+      persistConfig();
+      return config.debug;
+    },
+    config,
   };
-window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+
+  if (config.enabled) start();
+};window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installTrackerModule = function installTrackerModule(bot) {
   const configStorageKey = "minibiaCopilot.tracker.config";
@@ -10343,8 +10609,6 @@ window.__minibiaCopilotBundle.installLootbagModule = function installLootbagModu
     config,
   };
 };
-
-
 window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
@@ -10378,8 +10642,8 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
 
     const home = bot.pz?.getHomePz?.();
     homeLabel.textContent = home
-      ? `Lugar Seguro: ${home.x}, ${home.y}, ${home.z}`
-      : "Lugar Seguro: no asignado";
+      ? `Panic Runner Home: ${home.x}, ${home.y}, ${home.z}`
+      : "Panic Runner Home: not set";
   }
 
   function refreshPanicStatus() {
@@ -10417,7 +10681,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     };
 
     if (overlayButton) {
-      overlayButton.textContent = status?.config?.overlayEnabled ? "Desactivar Overlay" : "Activar Overlay";
+      overlayButton.textContent = status?.config?.overlayEnabled ? "Disable Overlay" : "Enable Overlay";
     }
 
     if (overlayLabel) {
@@ -10630,7 +10894,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
       if (!presetNames.length) {
         const option = document.createElement("option");
         option.value = "";
-        option.textContent = "No hay Cuevas Guardadas";
+        option.textContent = "No saved presets";
         select.appendChild(option);
         select.disabled = true;
       } else {
@@ -10667,12 +10931,12 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     const route = bot.cave?.getRoute?.() || [];
 
     if (!position) {
-      label.textContent = "Inicio cercano: ubicacion actual no disponible";
+      label.textContent = "Closest start: current position unavailable";
       return;
     }
 
     if (!route.length) {
-      label.textContent = "Inicio cercano: sin waypoints";
+      label.textContent = "Closest start: no waypoints";
       return;
     }
 
@@ -10680,11 +10944,11 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     const waypoint = route[closestIndex];
 
     if (!waypoint) {
-      label.textContent = "Inicio cercano: no disponible";
+      label.textContent = "Closest start: unavailable";
       return;
     }
 
-    label.textContent = `Inicio cercano: ${closestIndex + 1}. ${waypoint.x}, ${waypoint.y}, ${waypoint.z}`;
+    label.textContent = `Closest start: ${closestIndex + 1}. ${waypoint.x}, ${waypoint.y}, ${waypoint.z}`;
   }
 
   function refreshCaveTransitionStatus() {
@@ -10693,7 +10957,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
 
     const transitions = bot.cave?.getTransitions?.() || [];
     if (!transitions.length) {
-      label.textContent = "Transicion aprendida: ninguna";
+      label.textContent = "Transitions learned: none";
       return;
     }
 
@@ -10702,13 +10966,13 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
       .sort((a, b) => Number(b?.lastSeenAt || 0) - Number(a?.lastSeenAt || 0))[0];
 
     if (!latest?.from || !latest?.to) {
-      label.textContent = `Transicion aprendida: ${transitions.length}`;
+      label.textContent = `Transitions learned: ${transitions.length}`;
       return;
     }
 
     const extra = transitions.length > 1 ? ` (+${transitions.length - 1} more)` : "";
     label.textContent =
-      `Transicion aprendida: ${latest.from.x}, ${latest.from.y}, ${latest.from.z} -> ` +
+      `Transitions learned: ${latest.from.x}, ${latest.from.y}, ${latest.from.z} -> ` +
       `${latest.to.x}, ${latest.to.y}, ${latest.to.z}${extra}`;
   }
 
@@ -10812,9 +11076,9 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
 
     if (statusLabel) {
       if (!info) {
-        statusLabel.textContent = "Status: no hay datos (click Refresh)";
+        statusLabel.textContent = "Status: no data (click Refresh)";
       } else if (!info.active) {
-        statusLabel.textContent = "Status: ninguna sesion activa (click Start)";
+        statusLabel.textContent = "Status: no active session (click Start)";
       } else if (info.paused) {
         statusLabel.textContent = `Status: paused (${formatElapsed(info.elapsedMs)})`;
       } else {
@@ -11272,7 +11536,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
 
     const names = bot.attack?.getPriorityTargets?.() || [];
     if (!names.length) {
-      list.innerHTML = '<div class="mc-small-note">No has agregado ningun moustro.</div>';
+      list.innerHTML = '<div class="mc-small-note">No priority targets yet. Add a monster name above.</div>';
     } else {
       list.innerHTML = names.map((name, index) => (
         `<div class="mc-priority-row" data-name="${escapeHtml(name)}">` +
@@ -11313,6 +11577,54 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
       }
     }
   }
+
+function refreshAntiBotStatus() {
+  const status = bot.antiBot?.status?.();
+
+  const enabledInput = document.getElementById(
+    "minibia-copilot-antibot-enabled"
+  );
+
+  const statusLabel = document.getElementById(
+    "minibia-copilot-antibot-status"
+  );
+
+  const hooksLabel = document.getElementById(
+    "minibia-copilot-antibot-hooks"
+  );
+
+  if (!status) {
+    if (enabledInput) enabledInput.checked = false;
+    if (statusLabel) statusLabel.textContent =
+      "Estado: módulo no instalado";
+
+    if (hooksLabel) hooksLabel.textContent =
+      "Detección: no disponible";
+
+    return;
+  }
+
+  if (enabledInput && document.activeElement !== enabledInput) {
+    enabledInput.checked = !!status.running;
+  }
+
+  if (statusLabel) {
+    statusLabel.textContent = status.running
+      ? "Estado: AntiBot activo"
+      : "Estado: AntiBot detenido";
+  }
+
+  if (hooksLabel) {
+    const hooks = status.hooks || {};
+
+    hooksLabel.textContent =
+      `Packet: ${hooks.packet ? "OK" : "Pendiente"} | ` +
+      `Cancel: ${hooks.cancelMessage ? "OK" : "Pendiente"} | ` +
+      `Chat: ${hooks.channelPoll ? "OK" : "Inactivo"}`;
+  }
+}
+
+
 
   function refreshMagicWallStatus() {
     const enabledInput = document.getElementById("minibia-copilot-magic-wall-enabled");
@@ -12775,6 +13087,31 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
               <div class="mc-list" id="minibia-copilot-panic-gm-list"></div>
             </div>
           </div>
+          <div class="mc-section">
+           <div class="mc-label">AntiBot Protection</div>
+            <div class="mc-stack">
+            <label class="mc-toggle">
+                 <input
+                   type="checkbox"
+                   id="minibia-copilot-antibot-enabled"/>
+                 <span>Activar AntiBot</span>
+               </label>
+
+          <div class="mc-small-note" id="minibia-copilot-antibot-status">
+            Estado: detenido
+         </div>
+
+          <div class="mc-small-note" id="minibia-copilot-antibot-hooks">
+            Detección: sin inicializar
+         </div>
+
+         <div class="mc-small-note">
+            Detecta mensajes de comprobación AntiBot y genera
+            una alerta sonora y visual. La comprobación debe
+              resolverse manualmente.
+            </div>
+          </div>
+        </div>        
 
 
         </div>
@@ -12854,6 +13191,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     const equipAmuletCustomInput = panel.querySelector("#minibia-copilot-equip-amulet-custom");
     const equipAmuletAutoSwapInput = panel.querySelector("#minibia-copilot-equip-amulet-autoswap");
     const alphaWatchEnabledInput = panel.querySelector("#minibia-copilot-alpha-watch-enabled");
+    const antiBotEnabledInput = panel.querySelector("#minibia-copilot-antibot-enabled");
     const fightOpenButton = panel.querySelector("#minibia-copilot-fight-open");
     if (fightOpenButton) {
       fightOpenButton.addEventListener("click", () => openFightModal());
@@ -12933,10 +13271,11 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     const autoHealHpHotkeyInput = panel.querySelector("#minibia-copilot-auto-heal-hp-hotkey");
     const autoHealMinManaInput = panel.querySelector("#minibia-copilot-auto-heal-min-mana");
     const autoHealManaHotkeyInput = panel.querySelector("#minibia-copilot-auto-heal-mana-hotkey");
-    const autoAttackEnabledInput = panel.querySelector("#minibia-bot-auto-attack-enabled");
-    const autoAttackMeleeInput = panel.querySelector("#minibia-bot-auto-attack-melee");
-    const autoAttackHotkeyInput = panel.querySelector("#minibia-bot-auto-attack-hotkey");
-    const autoAttackRuneHotkeyInput = panel.querySelector("#minibia-bot-auto-attack-rune-hotkey");
+    const autoAttackEnabledInput = panel.querySelector("#minibia-copilot-auto-attack-enabled");
+    const autoAttackMeleeInput = panel.querySelector("#minibia-copilot-auto-attack-melee");
+    const autoAttackRuneHotkeyInput = panel.querySelector("#minibia-copilot-auto-attack-rune-hotkey");
+    const autoAttackSafeDistanceInput = panel.querySelector("#minibia-copilot-auto-attack-safe-distance");
+    const autoAttackKiteInput = panel.querySelector("#minibia-copilot-auto-attack-kite");
     const talkEnabledInput = panel.querySelector("#minibia-copilot-talk-enabled");
     const talkApiKeyInput = panel.querySelector("#minibia-copilot-talk-api-key");
     const talkPromptInput = panel.querySelector("#minibia-copilot-talk-prompt");
@@ -13268,6 +13607,21 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
       });
     }
 
+    if (antiBotEnabledInput) {
+  antiBotEnabledInput.checked =
+    !!bot.antiBot?.status?.().running;
+
+  antiBotEnabledInput.addEventListener("change", () => {
+    if (antiBotEnabledInput.checked) {
+      bot.antiBot?.start?.();
+    } else {
+      bot.antiBot?.stop?.();
+    }
+
+    refreshAntiBotStatus();
+  });
+}
+
     if (trackerEnabledInput) {
       trackerEnabledInput.addEventListener("change", () => {
         if (trackerEnabledInput.checked) {
@@ -13514,7 +13868,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
 
     if (cavePresetNewButton) {
       cavePresetNewButton.addEventListener("click", () => {
-        const name = window.prompt("Nombre de la Cueva:");
+        const name = window.prompt("Name the new cave preset:");
         if (name == null) {
           return;
         }
@@ -13610,17 +13964,6 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
       });
     }
 
-
-
-    if (autoAttackHotkeyInput) {
-      autoAttackHotkeyInput.value = String(bot.attack?.config?.targetHotbarSlot ?? 3);
-      autoAttackHotkeyInput.addEventListener("change", () => {
-        const targetHotbarSlot = Math.min(12, Math.max(1, Number(autoAttackHotkeyInput.value) || 1));
-        autoAttackHotkeyInput.value = String(targetHotbarSlot);
-        bot.attack.updateConfig({ targetHotbarSlot });
-      });
-    }
-
     if (autoAttackRuneHotkeyInput) {
       autoAttackRuneHotkeyInput.value = bot.attack?.config?.runeHotbarSlot
         ? String(bot.attack.config.runeHotbarSlot)
@@ -13642,25 +13985,84 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
       });
     }
 
+    const attackPriorityInput = panel.querySelector("#minibia-copilot-attack-priority-input");
+    const attackPriorityAddButton = panel.querySelector("#minibia-copilot-attack-priority-add");
+    const attackPriorityList = panel.querySelector("#minibia-copilot-attack-priority-list");
+
+    function addPriorityFromInput() {
+      const name = attackPriorityInput?.value?.trim() || "";
+      if (!name) return;
+      bot.attack?.addPriorityTarget?.(name);
+      if (attackPriorityInput) attackPriorityInput.value = "";
+      refreshAttackPriorityUI();
+    }
+
+    if (attackPriorityAddButton) {
+      attackPriorityAddButton.addEventListener("click", addPriorityFromInput);
+    }
+    if (attackPriorityInput) {
+      attackPriorityInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          addPriorityFromInput();
+        }
+      });
+    }
+
+    if (attackPriorityList) {
+      attackPriorityList.addEventListener("click", (event) => {
+        const upTarget = event.target.closest("[data-attack-priority-up]");
+        if (upTarget) {
+          bot.attack?.movePriorityTarget?.(upTarget.getAttribute("data-attack-priority-up"), -1);
+          refreshAttackPriorityUI();
+          return;
+        }
+        const downTarget = event.target.closest("[data-attack-priority-down]");
+        if (downTarget) {
+          bot.attack?.movePriorityTarget?.(downTarget.getAttribute("data-attack-priority-down"), 1);
+          refreshAttackPriorityUI();
+          return;
+        }
+        const removeTarget = event.target.closest("[data-attack-priority-remove]");
+        if (removeTarget) {
+          bot.attack?.removePriorityTarget?.(removeTarget.getAttribute("data-attack-priority-remove"));
+          refreshAttackPriorityUI();
+        }
+      });
+    }
+
+    refreshAttackPriorityUI();
+
+    if (autoAttackSafeDistanceInput) {
+      autoAttackSafeDistanceInput.value = String(bot.attack?.config?.safeDistance ?? 4);
+      autoAttackSafeDistanceInput.addEventListener("change", () => {
+        const safeDistance = Math.max(1, Math.min(7, Number(autoAttackSafeDistanceInput.value) || 4));
+        autoAttackSafeDistanceInput.value = String(safeDistance);
+        bot.attack.updateConfig({ safeDistance });
+      });
+    }
+
+    if (autoAttackKiteInput) {
+      autoAttackKiteInput.checked = bot.attack?.config?.kitingEnabled !== false;
+      autoAttackKiteInput.addEventListener("change", () => {
+        bot.attack.updateConfig({ kitingEnabled: autoAttackKiteInput.checked });
+      });
+    }
+
     if (autoAttackEnabledInput) {
       autoAttackEnabledInput.checked = !!bot.attack?.status?.().running;
       autoAttackEnabledInput.addEventListener("change", () => {
-        const targetHotbarSlot = Math.min(
-          12,
-          Math.max(1, Number(autoAttackHotkeyInput?.value) || bot.attack.config.targetHotbarSlot || 1)
-        );
         const runeHotbarSlot = (() => {
           const rawValue = Number(autoAttackRuneHotkeyInput?.value);
           if (Number.isFinite(rawValue) && rawValue >= 1 && rawValue <= 12) {
             return Math.trunc(rawValue);
           }
-
           return bot.attack.config.runeHotbarSlot ?? null;
         })();
         const meleeMode = !!autoAttackMeleeInput?.checked;
 
         if (autoAttackEnabledInput.checked) {
-          bot.attack.start({ targetHotbarSlot, runeHotbarSlot, meleeMode });
+          bot.attack.start({ runeHotbarSlot, meleeMode });
         } else {
           bot.attack.stop();
         }
@@ -13776,6 +14178,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     refreshHuntStatus();
     refreshTrackerStatus();
     refreshAlphaWatchStatus();
+    refreshAntiBotStatus();
     refreshLootbagStatus();
     refreshVisibleCreatures();
     refreshCavePresetControls();
@@ -13821,6 +14224,11 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     bot.addCleanup(() => {
       window.clearInterval(trackerTimerId);
     });
+
+    const antiBotStatusTimerId = window.setInterval(refreshAntiBotStatus,1000);
+      bot.addCleanup(() => {
+        window.clearInterval(antiBotStatusTimerId);
+      });
 
     ensureTrackerToastContainer();
     const repositionToasts = () => {

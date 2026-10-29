@@ -967,6 +967,54 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     }
   }
 
+function refreshAntiBotStatus() {
+  const status = bot.antiBot?.status?.();
+
+  const enabledInput = document.getElementById(
+    "minibia-copilot-antibot-enabled"
+  );
+
+  const statusLabel = document.getElementById(
+    "minibia-copilot-antibot-status"
+  );
+
+  const hooksLabel = document.getElementById(
+    "minibia-copilot-antibot-hooks"
+  );
+
+  if (!status) {
+    if (enabledInput) enabledInput.checked = false;
+    if (statusLabel) statusLabel.textContent =
+      "Estado: módulo no instalado";
+
+    if (hooksLabel) hooksLabel.textContent =
+      "Detección: no disponible";
+
+    return;
+  }
+
+  if (enabledInput && document.activeElement !== enabledInput) {
+    enabledInput.checked = !!status.running;
+  }
+
+  if (statusLabel) {
+    statusLabel.textContent = status.running
+      ? "Estado: AntiBot activo"
+      : "Estado: AntiBot detenido";
+  }
+
+  if (hooksLabel) {
+    const hooks = status.hooks || {};
+
+    hooksLabel.textContent =
+      `Packet: ${hooks.packet ? "OK" : "Pendiente"} | ` +
+      `Cancel: ${hooks.cancelMessage ? "OK" : "Pendiente"} | ` +
+      `Chat: ${hooks.channelPoll ? "OK" : "Inactivo"}`;
+  }
+}
+
+
+
   function refreshMagicWallStatus() {
     const enabledInput = document.getElementById("minibia-copilot-magic-wall-enabled");
     const audioInput = document.getElementById("minibia-copilot-magic-wall-audio");
@@ -2428,6 +2476,31 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
               <div class="mc-list" id="minibia-copilot-panic-gm-list"></div>
             </div>
           </div>
+          <div class="mc-section">
+           <div class="mc-label">AntiBot Protection</div>
+            <div class="mc-stack">
+            <label class="mc-toggle">
+                 <input
+                   type="checkbox"
+                   id="minibia-copilot-antibot-enabled"/>
+                 <span>Activar AntiBot</span>
+               </label>
+
+          <div class="mc-small-note" id="minibia-copilot-antibot-status">
+            Estado: detenido
+         </div>
+
+          <div class="mc-small-note" id="minibia-copilot-antibot-hooks">
+            Detección: sin inicializar
+         </div>
+
+         <div class="mc-small-note">
+            Detecta mensajes de comprobación AntiBot y genera
+            una alerta sonora y visual. La comprobación debe
+              resolverse manualmente.
+            </div>
+          </div>
+        </div>        
 
 
         </div>
@@ -2507,6 +2580,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     const equipAmuletCustomInput = panel.querySelector("#minibia-copilot-equip-amulet-custom");
     const equipAmuletAutoSwapInput = panel.querySelector("#minibia-copilot-equip-amulet-autoswap");
     const alphaWatchEnabledInput = panel.querySelector("#minibia-copilot-alpha-watch-enabled");
+    const antiBotEnabledInput = panel.querySelector("#minibia-copilot-antibot-enabled");
     const fightOpenButton = panel.querySelector("#minibia-copilot-fight-open");
     if (fightOpenButton) {
       fightOpenButton.addEventListener("click", () => openFightModal());
@@ -2921,6 +2995,21 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
         refreshAlphaWatchStatus();
       });
     }
+
+    if (antiBotEnabledInput) {
+  antiBotEnabledInput.checked =
+    !!bot.antiBot?.status?.().running;
+
+  antiBotEnabledInput.addEventListener("change", () => {
+    if (antiBotEnabledInput.checked) {
+      bot.antiBot?.start?.();
+    } else {
+      bot.antiBot?.stop?.();
+    }
+
+    refreshAntiBotStatus();
+  });
+}
 
     if (trackerEnabledInput) {
       trackerEnabledInput.addEventListener("change", () => {
@@ -3478,6 +3567,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     refreshHuntStatus();
     refreshTrackerStatus();
     refreshAlphaWatchStatus();
+    refreshAntiBotStatus();
     refreshLootbagStatus();
     refreshVisibleCreatures();
     refreshCavePresetControls();
@@ -3523,6 +3613,11 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     bot.addCleanup(() => {
       window.clearInterval(trackerTimerId);
     });
+
+    const antiBotStatusTimerId = window.setInterval(refreshAntiBotStatus,1000);
+      bot.addCleanup(() => {
+        window.clearInterval(antiBotStatusTimerId);
+      });
 
     ensureTrackerToastContainer();
     const repositionToasts = () => {

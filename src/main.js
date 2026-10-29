@@ -209,7 +209,7 @@
       alphaWatch: bot.alphaWatch.status(),
       fightEstimator: bot.fightEstimator.status(),
       lootbag: bot.lootbag.status(),
-	  antiBot: bot.antiBot.status(),
+	    antiBot: bot.antiBot.status(),
     });
 
     window.minibiaCopilot = bot;
