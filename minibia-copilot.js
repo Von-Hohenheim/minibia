@@ -14196,7 +14196,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
       alphaWatch: bot.alphaWatch.status(),
       fightEstimator: bot.fightEstimator.status(),
       lootbag: bot.lootbag.status(),
-	  antiBot: bot.antiBot.status(),
+	    antiBot: bot.antiBot.status(),
     });
 
     window.minibiaCopilot = bot;
