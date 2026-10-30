@@ -1,4 +1,4 @@
-window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installPanicModule = function installPanicModule(bot) {
   const configStorageKey = "minibiaCopilot.panic.config";
@@ -120,7 +120,7 @@ window.__minibiaCopilotBundle.installPanicModule = function installPanicModule(b
   }
 
   function getRecentChannelMessages() {
-    return (window.gameClient?.interface?.channelManager?.channels || []).flatMap((channel) =>
+    return (window.__minibiaGameClient?.interface?.channelManager?.channels || []).flatMap((channel) =>
       (channel?.__contents || []).map((entry) => ({
         channelName: channel?.name || null,
         message: String(entry?.message || ""),
@@ -598,3 +598,4 @@ window.__minibiaCopilotBundle.installPanicModule = function installPanicModule(b
     config,
   };
 };
+

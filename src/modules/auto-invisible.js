@@ -1,4 +1,4 @@
-window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installAutoInvisibleModule = function installAutoInvisibleModule(bot) {
   const configStorageKey = "minibiaCopilot.invisible.config";
@@ -30,7 +30,7 @@ window.__minibiaCopilotBundle.installAutoInvisibleModule = function installAutoI
   }
 
   function isInvisibleActive() {
-    const player = window.gameClient?.player;
+    const player = window.__minibiaGameClient?.player;
     const conditions = player?.conditions;
     const invisibleConditionId = getInvisibleConditionId();
 
@@ -214,3 +214,4 @@ window.__minibiaCopilotBundle.installAutoInvisibleModule = function installAutoI
     config,
   };
 };
+

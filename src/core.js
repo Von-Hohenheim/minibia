@@ -1,4 +1,31 @@
-window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+
+let cachedMinibiaGameClient = null;
+
+function getMinibiaGameClient() {
+  if (cachedMinibiaGameClient) {
+    return cachedMinibiaGameClient;
+  }
+
+  try {
+    const client = Function(
+      "return typeof vfdOywKJESRq !== 'undefined' ? vfdOywKJESRq : null"
+    )();
+
+    if (client) {
+      cachedMinibiaGameClient = client;
+    }
+
+    return client;
+  } catch (error) {
+    return null;
+  }
+}
+
+Object.defineProperty(window, "__minibiaGameClient", {
+  configurable: true,
+  get: getMinibiaGameClient
+});
 
 window.__minibiaCopilotBundle.createBot = function createBot() {
   const cleanups = [];
@@ -294,7 +321,7 @@ window.__minibiaCopilotBundle.createBot = function createBot() {
       }
     } catch (error) {}
     if (!notificationProto) {
-      const live = window.gameClient?.interface?.notificationManager;
+      const live = window.__minibiaGameClient?.interface?.notificationManager;
       if (live) notificationProto = Object.getPrototypeOf(live);
     }
 
@@ -305,7 +332,7 @@ window.__minibiaCopilotBundle.createBot = function createBot() {
       }
     } catch (error) {}
     if (!interfaceProto) {
-      const live = window.gameClient?.interface;
+      const live = window.__minibiaGameClient?.interface;
       if (live) interfaceProto = Object.getPrototypeOf(live);
     }
 
@@ -459,17 +486,17 @@ window.__minibiaCopilotBundle.createBot = function createBot() {
       },
     },
     getPlayerPosition() {
-      return window.gameClient?.player?.getPosition?.() || null;
+      return window.__minibiaGameClient?.player?.getPosition?.() || null;
     },
     getPlayerState() {
-      return window.gameClient?.player?.state || null;
+      return window.__minibiaGameClient?.player?.state || null;
     },
     getPlayerName() {
       return (
         String(
           this.getPlayerState()?.name ||
-          window.gameClient?.player?.name ||
-          window.gameClient?.player?.state?.name ||
+          window.__minibiaGameClient?.player?.name ||
+          window.__minibiaGameClient?.player?.state?.name ||
           ""
         ).trim() || null
       );
@@ -495,7 +522,7 @@ window.__minibiaCopilotBundle.createBot = function createBot() {
       };
     },
     sendChat(text) {
-      const channelManager = window.gameClient?.interface?.channelManager;
+      const channelManager = window.__minibiaGameClient?.interface?.channelManager;
       if (!channelManager || !text) {
         return false;
       }
@@ -512,7 +539,7 @@ window.__minibiaCopilotBundle.createBot = function createBot() {
       return tryClickReconnect();
     },
     clickHotbar(index) {
-      const button = window.gameClient?.interface?.hotbarManager?.slots?.[index]?.canvas?.canvas;
+      const button = window.__minibiaGameClient?.interface?.hotbarManager?.slots?.[index]?.canvas?.canvas;
       if (!button) {
         return false;
       }
@@ -593,3 +620,5 @@ window.__minibiaCopilotBundle.createBot = function createBot() {
     },
   };
 };
+
+

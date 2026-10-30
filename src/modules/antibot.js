@@ -1,4 +1,4 @@
-window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installAntiBotModule = function installAntiBotModule(bot) {
   const configStorageKey = "minibiaCopilot.antiBot.config";
@@ -35,7 +35,7 @@ window.__minibiaCopilotBundle.installAntiBotModule = function installAntiBotModu
     bot.storage.set(configStorageKey, { ...config });
   }
 
-  // ---------- Extracción de texto ----------
+  // ---------- ExtracciÃ³n de texto ----------
   function extractText(value, depth = 0) {
     if (value == null || depth > 2) return "";
     if (typeof value === "string") return value;
@@ -115,7 +115,7 @@ window.__minibiaCopilotBundle.installAntiBotModule = function installAntiBotModu
     let on = false;
     titleTimer = window.setInterval(() => {
       on = !on;
-      document.title = on ? "⚠ ANTI-BOT CHECK" : originalTitle;
+      document.title = on ? "âš  ANTI-BOT CHECK" : originalTitle;
     }, 700);
   }
 
@@ -146,8 +146,8 @@ window.__minibiaCopilotBundle.installAntiBotModule = function installAntiBotModu
     }
 
     notice.textContent = seconds != null
-      ? `⚠ ANTI-BOT RUNE CHECK en ${seconds}s — Atiéndelo manualmente`
-      : "⚠ ANTI-BOT RUNE CHECK — Atiéndelo manualmente";
+      ? `âš  ANTI-BOT RUNE CHECK en ${seconds}s â€” AtiÃ©ndelo manualmente`
+      : "âš  ANTI-BOT RUNE CHECK â€” AtiÃ©ndelo manualmente";
 
     startTitleFlash();
     if (noticeTimer != null) window.clearTimeout(noticeTimer);
@@ -163,7 +163,7 @@ window.__minibiaCopilotBundle.installAntiBotModule = function installAntiBotModu
     stopTitleFlash();
   }
 
-  // ---------- Lógica de detección ----------
+  // ---------- LÃ³gica de detecciÃ³n ----------
   function handleText(text, source) {
     if (!state.running || !text) return false;
 
@@ -177,13 +177,13 @@ window.__minibiaCopilotBundle.installAntiBotModule = function installAntiBotModu
     if (!match) return false;
 
     const now = Date.now();
-    if (now - state.lastAlertAt < config.cooldownMs) return true; // misma alerta vista por otra vía
+    if (now - state.lastAlertAt < config.cooldownMs) return true; // misma alerta vista por otra vÃ­a
 
     state.lastAlertAt = now;
     state.lastSeconds = match[1] != null ? Number(match[1]) : null;
     state.lastSource = source;
 
-    console.warn("[AntiBot] ¡Comprobación detectada!", { text, source });
+    console.warn("[AntiBot] Â¡ComprobaciÃ³n detectada!", { text, source });
     raiseAlarm();
     showNotice(state.lastSeconds);
     return true;
@@ -225,7 +225,7 @@ window.__minibiaCopilotBundle.installAntiBotModule = function installAntiBotModu
   function removePacketHook() {
     if (!packetHook) return;
     const { proto, original, wrapper } = packetHook;
-    // Solo restauramos si nadie parcheó encima; si no, el wrapper queda inerte (running=false).
+    // Solo restauramos si nadie parcheÃ³ encima; si no, el wrapper queda inerte (running=false).
     if (proto.handleServerMessage === wrapper) {
       proto.handleServerMessage = original;
     }
@@ -247,7 +247,7 @@ window.__minibiaCopilotBundle.installAntiBotModule = function installAntiBotModu
 
   // ---------- Hook 3: sondeo del chat ----------
   function readChannelEntries() {
-    const channels = window.gameClient?.interface?.channelManager?.channels || [];
+    const channels = window.__minibiaGameClient?.interface?.channelManager?.channels || [];
     const out = [];
     for (const channel of channels) {
       for (const entry of channel?.__contents || []) {

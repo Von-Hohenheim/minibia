@@ -1,4 +1,4 @@
-window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot) {
   const configStorageKey = "minibiaCopilot.rune.config";
@@ -73,7 +73,7 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
   }
 
   function isSated() {
-    const player = window.gameClient?.player;
+    const player = window.__minibiaGameClient?.player;
     const conditions = player?.conditions;
 
     if (conditions?.has && conditions.SATED != null) {
@@ -89,15 +89,15 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
   }
 
   function getOpenContainers() {
-    return Array.from(window.gameClient?.player?.__openedContainers || []);
+    return Array.from(window.__minibiaGameClient?.player?.__openedContainers || []);
   }
 
   function getItemDefinition(item) {
     if (!item) return null;
 
     return (
-      window.gameClient?.itemDefinitionsBySid?.[item.sid] ||
-      window.gameClient?.itemDefinitions?.[item.id] ||
+      window.__minibiaGameClient?.itemDefinitionsBySid?.[item.sid] ||
+      window.__minibiaGameClient?.itemDefinitions?.[item.id] ||
       null
     );
   }
@@ -146,7 +146,7 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
   }
 
   function clickContainerUse() {
-    const menu = window.gameClient?.interface?.menuManager?.menus?.["container-menu"];
+    const menu = window.__minibiaGameClient?.interface?.menuManager?.menus?.["container-menu"];
     const root = menu?.element;
     if (!root) return false;
 
@@ -360,3 +360,4 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
   bot.startAutoEat = startAutoEat;
   bot.stopAutoEat = stopAutoEat;
 };
+
