@@ -1,6 +1,6 @@
-window.__minibiaBotBundle = window.__minibiaBotBundle || {};
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
-window.__minibiaBotBundle.installAutoAttackModule = function installAutoAttackModule(bot) {
+window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAttackModule(bot) {
   const configStorageKey = "minibiaBot.attack.config";
   const state = {
     running: false,
