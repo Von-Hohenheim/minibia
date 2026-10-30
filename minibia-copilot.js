@@ -3864,7 +3864,7 @@ function syncMeleeChase(now = Date.now()) {
     normalizeHotbarSlot,
     config,
   };
-};
+
 
 window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 

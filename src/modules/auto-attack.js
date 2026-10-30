@@ -874,5 +874,5 @@ function syncMeleeChase(now = Date.now()) {
     normalizeHotbarSlot,
     config,
   };
-};
+
 
