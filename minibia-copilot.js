@@ -3866,7 +3866,7 @@ function syncMeleeChase(now = Date.now()) {
   };
 
 
-window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+ window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot) {
   const configStorageKey = "minibiaCopilot.cave.config";
