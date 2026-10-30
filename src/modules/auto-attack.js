@@ -478,6 +478,7 @@ function setCurrentFollowTarget(target) {
   }
 
 
+
 function syncMeleeChase(now = Date.now()) {
   if (!config.meleeMode) {
     return false;
@@ -600,6 +601,7 @@ function syncMeleeChase(now = Date.now()) {
 
   return true;
 }
+
 
 
   function canAttack(now = Date.now()) {
