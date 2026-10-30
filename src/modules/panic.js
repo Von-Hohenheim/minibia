@@ -120,7 +120,7 @@ window.__minibiaCopilotBundle.installPanicModule = function installPanicModule(b
   }
 
   function getRecentChannelMessages() {
-    return (window.__minibiaGameClient?.interface?.channelManager?.channels || []).flatMap((channel) =>
+    return (window.gameClient?.interface?.channelManager?.channels || []).flatMap((channel) =>
       (channel?.__contents || []).map((entry) => ({
         channelName: channel?.name || null,
         message: String(entry?.message || ""),

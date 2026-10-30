@@ -1,20 +1,4 @@
-﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
-
-function getMinibiaGameClient() {
-  try {
-    return Function(
-      "return typeof vfdOywKJESRq !== 'undefined' ? vfdOywKJESRq : null"
-    )();
-  } catch (error) {
-    console.error("[Minibia] Error recuperando GameClient:", error);
-    return null;
-  }
-}
-
-Object.defineProperty(window, "__minibiaGameClient", {
-  configurable: true,
-  get: getMinibiaGameClient
-});
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.createBot = function createBot() {
   const cleanups = [];
@@ -310,7 +294,7 @@ window.__minibiaCopilotBundle.createBot = function createBot() {
       }
     } catch (error) {}
     if (!notificationProto) {
-      const live = window.__minibiaGameClient?.interface?.notificationManager;
+      const live = window.gameClient?.interface?.notificationManager;
       if (live) notificationProto = Object.getPrototypeOf(live);
     }
 
@@ -321,7 +305,7 @@ window.__minibiaCopilotBundle.createBot = function createBot() {
       }
     } catch (error) {}
     if (!interfaceProto) {
-      const live = window.__minibiaGameClient?.interface;
+      const live = window.gameClient?.interface;
       if (live) interfaceProto = Object.getPrototypeOf(live);
     }
 
@@ -475,17 +459,17 @@ window.__minibiaCopilotBundle.createBot = function createBot() {
       },
     },
     getPlayerPosition() {
-      return window.__minibiaGameClient?.player?.getPosition?.() || null;
+      return window.gameClient?.player?.getPosition?.() || null;
     },
     getPlayerState() {
-      return window.__minibiaGameClient?.player?.state || null;
+      return window.gameClient?.player?.state || null;
     },
     getPlayerName() {
       return (
         String(
           this.getPlayerState()?.name ||
-          window.__minibiaGameClient?.player?.name ||
-          window.__minibiaGameClient?.player?.state?.name ||
+          window.gameClient?.player?.name ||
+          window.gameClient?.player?.state?.name ||
           ""
         ).trim() || null
       );
@@ -511,7 +495,7 @@ window.__minibiaCopilotBundle.createBot = function createBot() {
       };
     },
     sendChat(text) {
-      const channelManager = window.__minibiaGameClient?.interface?.channelManager;
+      const channelManager = window.gameClient?.interface?.channelManager;
       if (!channelManager || !text) {
         return false;
       }
@@ -528,7 +512,7 @@ window.__minibiaCopilotBundle.createBot = function createBot() {
       return tryClickReconnect();
     },
     clickHotbar(index) {
-      const button = window.__minibiaGameClient?.interface?.hotbarManager?.slots?.[index]?.canvas?.canvas;
+      const button = window.gameClient?.interface?.hotbarManager?.slots?.[index]?.canvas?.canvas;
       if (!button) {
         return false;
       }
@@ -615,7 +599,7 @@ window.__minibiaCopilotBundle.installPzModule = function installPzModule(bot) {
   const homeStorageKey = "minibiaCopilot.pz.home";
 
   function getLoadedTiles() {
-    const chunks = window.__minibiaGameClient?.world?.chunks || [];
+    const chunks = window.gameClient?.world?.chunks || [];
     const tiles = [];
 
     for (const chunk of chunks) {
@@ -665,7 +649,7 @@ window.__minibiaCopilotBundle.installPzModule = function installPzModule(bot) {
     const to = new Position(p.x, p.y, p.z);
 
     try {
-      window.__minibiaGameClient?.world?.pathfinder?.findPath?.(from, to);
+      window.gameClient?.world?.pathfinder?.findPath?.(from, to);
       bot.log("pathing to", { x: p.x, y: p.y, z: p.z, flags: tile.flags });
       return true;
     } catch (error) {
@@ -857,10 +841,10 @@ window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot
 
   function getTrackedCreatures() {
     const myState = bot.getPlayerState();
-    const myId = window.__minibiaGameClient?.player?.id;
+    const myId = window.gameClient?.player?.id;
     const myName = normalizeName(myState?.name);
 
-    return Object.values(window.__minibiaGameClient?.world?.activeCreatures || {}).filter((creature) => {
+    return Object.values(window.gameClient?.world?.activeCreatures || {}).filter((creature) => {
       if (!creature) return false;
       if (creature.id === myId) return false;
 
@@ -1373,7 +1357,7 @@ window.__minibiaCopilotBundle.installPanicModule = function installPanicModule(b
   }
 
   function getRecentChannelMessages() {
-    return (window.__minibiaGameClient?.interface?.channelManager?.channels || []).flatMap((channel) =>
+    return (window.gameClient?.interface?.channelManager?.channels || []).flatMap((channel) =>
       (channel?.__contents || []).map((entry) => ({
         channelName: channel?.name || null,
         message: String(entry?.message || ""),
@@ -1926,7 +1910,7 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
   }
 
   function isSated() {
-    const player = window.__minibiaGameClient?.player;
+    const player = window.gameClient?.player;
     const conditions = player?.conditions;
 
     if (conditions?.has && conditions.SATED != null) {
@@ -1942,15 +1926,15 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
   }
 
   function getOpenContainers() {
-    return Array.from(window.__minibiaGameClient?.player?.__openedContainers || []);
+    return Array.from(window.gameClient?.player?.__openedContainers || []);
   }
 
   function getItemDefinition(item) {
     if (!item) return null;
 
     return (
-      window.__minibiaGameClient?.itemDefinitionsBySid?.[item.sid] ||
-      window.__minibiaGameClient?.itemDefinitions?.[item.id] ||
+      window.gameClient?.itemDefinitionsBySid?.[item.sid] ||
+      window.gameClient?.itemDefinitions?.[item.id] ||
       null
     );
   }
@@ -1999,7 +1983,7 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
   }
 
   function clickContainerUse() {
-    const menu = window.__minibiaGameClient?.interface?.menuManager?.menus?.["container-menu"];
+    const menu = window.gameClient?.interface?.menuManager?.menus?.["container-menu"];
     const root = menu?.element;
     if (!root) return false;
 
@@ -2566,7 +2550,7 @@ window.__minibiaCopilotBundle.installAutoInvisibleModule = function installAutoI
   }
 
   function isInvisibleActive() {
-    const player = window.__minibiaGameClient?.player;
+    const player = window.gameClient?.player;
     const conditions = player?.conditions;
     const invisibleConditionId = getInvisibleConditionId();
 
@@ -2780,7 +2764,7 @@ window.__minibiaCopilotBundle.installAutoMagicShieldModule = function installAut
 
   function getMagicShieldConditionId() {
     const conditionManagerPrototype = window.ConditionManager?.prototype;
-    const playerConditions = window.__minibiaGameClient?.player?.conditions;
+    const playerConditions = window.gameClient?.player?.conditions;
     const candidateKeys = [
       "MAGIC_SHIELD",
       "MANA_SHIELD",
@@ -2800,7 +2784,7 @@ window.__minibiaCopilotBundle.installAutoMagicShieldModule = function installAut
   }
 
   function isMagicShieldActive(now = Date.now()) {
-    const player = window.__minibiaGameClient?.player;
+    const player = window.gameClient?.player;
     const conditions = player?.conditions;
     const magicShieldConditionId = getMagicShieldConditionId();
 
@@ -3118,34 +3102,12 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
   }
 
   function getCurrentTarget() {
-    return window.__minibiaGameClient?.player?.__target || null;
+    return window.gameClient?.player?.__target || null;
   }
 
   function getCurrentFollowTarget() {
-    return window.__minibiaGameClient?.player?.__followTarget || null;
+    return window.gameClient?.player?.__followTarget || null;
   }
-
-
-function getTargetPacketConstructor() {
-  try {
-    return Function(
-      "return typeof xybvUWFSP !== 'undefined' ? xybvUWFSP : null"
-    )();
-  } catch {
-    return null;
-  }
-}
-
-function getFollowPacketConstructor() {
-  try {
-    return Function(
-      "return typeof qEOhSUmoEi !== 'undefined' ? qEOhSUmoEi : null"
-    )();
-  } catch {
-    return null;
-  }
-}
-
 
   function pruneSkippedTargets(now = Date.now()) {
     for (const [id, expiresAt] of state.skippedTargetIds.entries()) {
@@ -3169,49 +3131,41 @@ function getFollowPacketConstructor() {
     resetFollowProgress();
   }
 
+  function clearCurrentFollowTarget() {
+    if (!window.gameClient?.player || typeof window.gameClient.send !== "function") {
+      return false;
+    }
 
+    if (typeof FollowPacket !== "function") {
+      return false;
+    }
 
-function clearCurrentFollowTarget() {
-  const client = window.__minibiaGameClient;
-  const player = client?.player;
-  const FollowPacket = getFollowPacketConstructor();
+    if (!getCurrentFollowTarget()) {
+      return false;
+    }
 
-  if (!player || typeof client.send !== "function" || !FollowPacket) {
-    return false;
+    window.gameClient.player.setFollowTarget(null);
+    window.gameClient.send(new FollowPacket(0));
+    return true;
   }
 
-  if (!getCurrentFollowTarget()) {
-    return false;
+  function clearCurrentTarget() {
+    if (!window.gameClient?.player || typeof window.gameClient.send !== "function") {
+      return false;
+    }
+
+    if (typeof TargetPacket !== "function") {
+      return false;
+    }
+
+    if (!getCurrentTarget()) {
+      return false;
+    }
+
+    window.gameClient.player.setTarget(null);
+    window.gameClient.send(new TargetPacket(0));
+    return true;
   }
-
-  player.setFollowTarget(null);
-  client.send(new FollowPacket(0));
-
-  return true;
-}
-
-function clearCurrentTarget() {
-  const client = window.__minibiaGameClient;
-  const player = client?.player;
-  const TargetPacket = getTargetPacketConstructor();
-
-  if (!player || typeof client.send !== "function" || !TargetPacket) {
-    return false;
-  }
-
-  if (!getCurrentTarget()) {
-    return false;
-  }
-
-  player.setTarget(null);
-  client.send(new TargetPacket(0));
-
-  state.engagedTargetId = null;
-
-  return true;
-}
-
-
 
   function markCombatActive(now = Date.now()) {
     if (!state.combatStartedAt) {
@@ -3266,32 +3220,38 @@ function clearCurrentTarget() {
     return null;
   }
 
+  function setCurrentTarget(target) {
+    if (!target || !window.gameClient?.player || typeof window.gameClient.send !== "function") {
+      return false;
+    }
 
-function setCurrentFollowTarget(target) {
-  const client = window.__minibiaGameClient;
-  const player = client?.player;
-  const FollowPacket = getFollowPacketConstructor();
+    if (typeof TargetPacket !== "function") {
+      return false;
+    }
 
-  if (
-    !target ||
-    !player ||
-    typeof client.send !== "function" ||
-    !FollowPacket ||
-    !Number.isInteger(Number(target.id))
-  ) {
-    return false;
-  }
-
-  if (isSameCreature(getCurrentFollowTarget(), target)) {
+    window.gameClient.player.setTarget(target);
+    window.gameClient.send(new TargetPacket(target.id));
+    state.engagedTargetId = target.id;
     return true;
   }
 
-  player.setFollowTarget(target);
-  client.send(new FollowPacket(Number(target.id)));
+  function setCurrentFollowTarget(target) {
+    if (!target || !window.gameClient?.player || typeof window.gameClient.send !== "function") {
+      return false;
+    }
 
-  return true;
-}
+    if (typeof FollowPacket !== "function") {
+      return false;
+    }
 
+    if (isSameCreature(getCurrentFollowTarget(), target)) {
+      return true;
+    }
+
+    window.gameClient.player.setFollowTarget(target);
+    window.gameClient.send(new FollowPacket(target.id));
+    return true;
+  }
 
   function skipTarget(target, reason, now = Date.now(), skipMs = 4000) {
     if (!target?.id) {
@@ -3350,79 +3310,40 @@ function setCurrentFollowTarget(target) {
     return getTileDistance(playerPosition, targetPosition) > maxTargetDistance;
   }
 
- function resetTargetIfTooFar() {
-  const currentTarget = getCurrentTarget();
+  function resetTargetIfTooFar() {
+    const currentTarget = getCurrentTarget();
+    if (currentTarget && shouldGiveUpTarget(currentTarget)) {
+      skipTarget(currentTarget, "target too far", Date.now(), 2500);
+      bot.log("gave up distant auto attack target", {
+        id: currentTarget.id,
+        name: currentTarget.name || "Mob",
+        position: normalizePosition(currentTarget.getPosition?.() || currentTarget.__position),
+        maxTargetDistance: Math.max(1, Number(config.maxTargetDistance) || 5),
+      });
+      return true;
+    }
 
-  if (currentTarget && shouldGiveUpTarget(currentTarget)) {
-    skipTarget(currentTarget, "target too far", Date.now(), 2500);
+    const engagedTarget = getEngagedTarget();
+    if (engagedTarget && shouldGiveUpTarget(engagedTarget)) {
+      skipTarget(engagedTarget, "engaged target too far", Date.now(), 2500);
+      bot.log("gave up distant auto attack target", {
+        id: engagedTarget.id,
+        name: engagedTarget.name || "Mob",
+        position: normalizePosition(engagedTarget.getPosition?.() || engagedTarget.__position),
+        maxTargetDistance: Math.max(1, Number(config.maxTargetDistance) || 5),
+      });
+      return true;
+    }
 
-    bot.log("gave up distant auto attack target", {
-      id: currentTarget.id,
-      name: currentTarget.name || "Mob",
-      position: normalizePosition(
-        currentTarget.getPosition?.() || currentTarget.__position
-      ),
-      maxTargetDistance: Math.max(
-        1,
-        Number(config.maxTargetDistance) || 5
-      ),
-    });
-
-    return true;
-  }
-
-  const engagedTarget = getEngagedTarget();
-
-  if (engagedTarget && shouldGiveUpTarget(engagedTarget)) {
-    skipTarget(engagedTarget, "engaged target too far", Date.now(), 2500);
-
-    bot.log("gave up distant auto attack target", {
-      id: engagedTarget.id,
-      name: engagedTarget.name || "Mob",
-      position: normalizePosition(
-        engagedTarget.getPosition?.() || engagedTarget.__position
-      ),
-      maxTargetDistance: Math.max(
-        1,
-        Number(config.maxTargetDistance) || 5
-      ),
-    });
-
-    return true;
-  }
-
-  return false;
-}
-
-function setCurrentTarget(target) {
-  const client = window.__minibiaGameClient;
-  const player = client?.player;
-  const TargetPacket = getTargetPacketConstructor();
-
-  if (
-    !target ||
-    !player ||
-    typeof client.send !== "function" ||
-    !TargetPacket ||
-    !Number.isInteger(Number(target.id))
-  ) {
     return false;
   }
-
-  player.setTarget(target);
-  client.send(new TargetPacket(Number(target.id)));
-
-  state.engagedTargetId = target.id;
-
-  return true;
-}
 
   function getTileFromPosition(position) {
     if (!position || typeof Position !== "function") {
       return null;
     }
 
-    return window.__minibiaGameClient?.world?.getTileFromWorldPosition?.(
+    return window.gameClient?.world?.getTileFromWorldPosition?.(
       new Position(position.x, position.y, position.z)
     ) || null;
   }
@@ -3445,7 +3366,7 @@ function setCurrentTarget(target) {
       return da - db;
     });
 
-    const pathfinder = window.__minibiaGameClient?.world?.pathfinder;
+    const pathfinder = window.gameClient?.world?.pathfinder;
     const startTile = getTileFromPosition(playerPosition);
     if (!pathfinder || !startTile || typeof pathfinder.search !== "function") {
       return null;
@@ -3483,132 +3404,102 @@ function setCurrentTarget(target) {
     return null;
   }
 
-
-
-function syncMeleeChase(now = Date.now()) {
-  if (!config.meleeMode) {
-    return false;
-  }
-
-  const target = getEngagedTarget();
-
-  if (!target) {
-    clearEngagedTarget();
-    return false;
-  }
-
-  const playerPosition = normalizePosition(bot.getPlayerPosition());
-  const targetPosition = normalizePosition(
-    target.getPosition?.() || target.__position
-  );
-
-  if (
-    !playerPosition ||
-    !targetPosition ||
-    playerPosition.z !== targetPosition.z
-  ) {
-    bot.log("auto attack chase target on different floor", {
-      targetId: target.id,
-      targetName: target.name || "Mob",
-      playerZ: playerPosition?.z,
-      targetZ: targetPosition?.z,
-    });
-
-    return false;
-  }
-
-  if (!findNearbyMonster(target)) {
-    bot.log("auto attack chase target no longer nearby", {
-      targetId: target.id,
-      targetName: target.name || "Mob",
-    });
-
-    clearCurrentFollowTarget();
-    clearEngagedTarget();
-    return false;
-  }
-
-  const giveUpDelayMs = Math.max(
-    5000,
-    (Number(config.tickMs) || 0) * 10
-  );
-
-  const currentDistance = getTileDistance(
-    playerPosition,
-    targetPosition
-  );
-
-  // Si el jugador ya está junto al monstruo, cancela el seguimiento.
-  if (isAdjacentTile(playerPosition, targetPosition)) {
-    state.lastChaseDestinationKey = null;
-
-    clearCurrentFollowTarget();
-    resetFollowProgress();
-
-    return false;
-  }
-
-  // Inicializar seguimiento del objetivo.
-  if (state.lastFollowTargetId !== target.id) {
-    state.lastFollowTargetId = target.id;
-    state.lastFollowDistance = currentDistance;
-    state.lastFollowProgressAt = now;
-    state.lastFollowStallAt = 0;
-  } else if (currentDistance < state.lastFollowDistance) {
-    state.lastFollowDistance = currentDistance;
-    state.lastFollowProgressAt = now;
-    state.lastFollowStallAt = 0;
-  }
-
-  const alreadyFollowing = isSameCreature(
-    getCurrentFollowTarget(),
-    target
-  );
-
-  // Utilizar el seguimiento nativo del juego.
-  const followed = setCurrentFollowTarget(target);
-
-  if (!followed) {
-    bot.log("auto attack failed to follow target", {
-      targetId: target.id,
-      targetName: target.name || "Mob",
-    });
-
-    return false;
-  }
-
-  if (!alreadyFollowing) {
-    state.lastChaseAt = now;
-
-    bot.log("following auto attack target", {
-      id: target.id,
-      name: target.name || "Mob",
-      followTargetId: target.id,
-      distance: currentDistance,
-    });
-  }
-
-  // Detectar si el personaje no consigue acercarse.
-  if (currentDistance < state.lastFollowDistance) {
-    state.lastFollowDistance = currentDistance;
-    state.lastFollowProgressAt = now;
-    state.lastFollowStallAt = 0;
-  } else {
-    if (!state.lastFollowStallAt) {
-      state.lastFollowStallAt = now;
-    } else if (now - state.lastFollowStallAt > giveUpDelayMs) {
-      return skipTarget(
-        target,
-        "follow made no progress",
-        now
-      );
+  function syncMeleeChase(now = Date.now()) {
+    if (!config.meleeMode) {
+      return false;
     }
+
+    const target = getEngagedTarget();
+    if (!target) {
+      clearEngagedTarget();
+      return false;
+    }
+
+    const playerPosition = normalizePosition(bot.getPlayerPosition());
+    const targetPosition = normalizePosition(target.getPosition?.() || target.__position);
+    if (!playerPosition || !targetPosition || playerPosition.z !== targetPosition.z) {
+      bot.log("auto attack chase target on different floor", {
+        targetId: target.id,
+        targetName: target.name || "Mob",
+        playerZ: playerPosition?.z,
+        targetZ: targetPosition?.z,
+      });
+      return false;
+    }
+
+    if (!findNearbyMonster(target)) {
+      bot.log("auto attack chase target no longer nearby", {
+        targetId: target.id,
+        targetName: target.name || "Mob",
+      });
+      clearCurrentFollowTarget();
+      clearEngagedTarget();
+      return false;
+    }
+
+    const giveUpDelayMs = Math.max(5000, (Number(config.tickMs) || 0) * 10);
+
+    if (isAdjacentTile(playerPosition, targetPosition)) {
+      state.lastChaseDestinationKey = null;
+      clearCurrentFollowTarget();
+      resetFollowProgress();
+      return false;
+    }
+
+    const adjacentPosition = findReachableAdjacentPosition(targetPosition, playerPosition);
+    if (!adjacentPosition) {
+      if (!state.lastFollowStallAt) {
+        state.lastFollowStallAt = now;
+        bot.log("auto attack chase no adjacent tile", {
+          targetId: target.id,
+          targetName: target.name || "Mob",
+          targetPos: targetPosition,
+          playerPos: playerPosition,
+        });
+        return false;
+      }
+
+      if (now - state.lastFollowStallAt > giveUpDelayMs) {
+        return skipTarget(target, "no reachable adjacent tile", now);
+      }
+
+      return false;
+    }
+
+    const currentDistance = getTileDistance(playerPosition, targetPosition);
+    if (state.lastFollowTargetId !== target.id) {
+      state.lastFollowTargetId = target.id;
+      state.lastFollowDistance = currentDistance;
+      state.lastFollowProgressAt = now;
+      state.lastFollowStallAt = 0;
+    } else if (currentDistance < state.lastFollowDistance) {
+      state.lastFollowDistance = currentDistance;
+      state.lastFollowProgressAt = now;
+      state.lastFollowStallAt = 0;
+    }
+
+    const followed = setCurrentFollowTarget(target);
+    if (followed) {
+      state.lastChaseAt = now;
+      state.lastChaseDestinationKey = getPositionKey(adjacentPosition);
+      bot.log("following auto attack target", {
+        id: target.id,
+        name: target.name || "Mob",
+        followTargetId: target.id,
+        distance: currentDistance,
+      });
+    }
+
+    if (state.lastFollowDistance <= currentDistance) {
+      if (!state.lastFollowStallAt) {
+        state.lastFollowStallAt = now;
+      } else if (now - state.lastFollowStallAt > giveUpDelayMs) {
+        return skipTarget(target, "follow made no progress", now);
+      }
+    }
+
+    return followed;
   }
-
-  return true;
-}
-
-
 
   function canAttack(now = Date.now()) {
     const slot = normalizeHotbarSlot(config.targetHotbarSlot);
@@ -3627,52 +3518,44 @@ function syncMeleeChase(now = Date.now()) {
     return getNearbyMonsters().length > 0;
   }
 
+  function triggerAttack(now = Date.now()) {
+    if (!canAttack(now)) {
+      return false;
+    }
 
-function triggerAttack(now = Date.now()) {
-  if (!canAttack(now)) {
-    return false;
-  }
-
-  const engagedTarget = getEngagedTarget();
-
-  const preferredTarget =
-    engagedTarget && !isTargetSkipped(engagedTarget, now)
+    const engagedTarget = getEngagedTarget();
+    const preferredTarget = engagedTarget && !isTargetSkipped(engagedTarget, now)
       ? engagedTarget
       : (getMonsterCandidates(now)[0] || null);
-
-  if (preferredTarget) {
-    const selected = setCurrentTarget(preferredTarget);
-
-    if (!selected) {
-      bot.log("failed to select auto attack target", {
+    if (preferredTarget && setCurrentTarget(preferredTarget)) {
+      state.lastTargetHotkeyAt = now;
+      markCombatActive(now);
+      bot.log("selected auto attack target", {
         id: preferredTarget.id,
         name: preferredTarget.name || "Mob",
+        reason: isSameCreature(preferredTarget, engagedTarget) ? "engaged target" : "nearest candidate",
       });
+      return true;
+    }
+
+    if (config.meleeMode) {
       return false;
     }
 
     const slot = normalizeHotbarSlot(config.targetHotbarSlot);
+    const clicked = bot.clickHotbar(slot - 1);
+    if (clicked) {
+      const monsters = getNearbyMonsters();
+      state.lastTargetHotkeyAt = now;
+      markCombatActive(now);
+      bot.log("used auto attack target hotkey", {
+        slot,
+        nearbyMonsters: monsters.map((creature) => creature.name || "Mob"),
+      });
+    }
 
-    const clicked = slot
-      ? bot.clickHotbar(slot - 1)
-      : false;
-
-    state.lastTargetHotkeyAt = now;
-    markCombatActive(now);
-
-    bot.log("auto attack target selected", {
-      id: preferredTarget.id,
-      name: preferredTarget.name || "Mob",
-      slot,
-      clicked,
-    });
-
-    return true;
+    return clicked;
   }
-
-  return false;
-}
-
 
   function canUseRune(now = Date.now()) {
     const slot = normalizeHotbarSlot(config.runeHotbarSlot);
@@ -3892,7 +3775,7 @@ function triggerAttack(now = Date.now()) {
   };
 };
 
- window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot) {
   const configStorageKey = "minibiaCopilot.cave.config";
@@ -4420,7 +4303,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
       return null;
     }
 
-    return window.__minibiaGameClient?.world?.getTileFromWorldPosition?.(
+    return window.gameClient?.world?.getTileFromWorldPosition?.(
       new Position(position.x, position.y, position.z)
     ) || null;
   }
@@ -4435,9 +4318,9 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
     }
 
     return (
-      window.__minibiaGameClient?.itemDefinitionsByCid?.[itemId] ||
-      window.__minibiaGameClient?.itemDefinitionsBySid?.[itemId] ||
-      window.__minibiaGameClient?.itemDefinitions?.[itemId] ||
+      window.gameClient?.itemDefinitionsByCid?.[itemId] ||
+      window.gameClient?.itemDefinitionsBySid?.[itemId] ||
+      window.gameClient?.itemDefinitions?.[itemId] ||
       null
     );
   }
@@ -4591,7 +4474,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
   }
 
   function getLoadedTiles() {
-    const chunks = window.__minibiaGameClient?.world?.chunks || [];
+    const chunks = window.gameClient?.world?.chunks || [];
     const tiles = [];
 
     for (const chunk of chunks) {
@@ -4649,7 +4532,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
   }
 
   function getMinimapCanvas() {
-    return window.__minibiaGameClient?.renderer?.minimap?.minimap?.canvas || document.getElementById("minimap") || null;
+    return window.gameClient?.renderer?.minimap?.minimap?.canvas || document.getElementById("minimap") || null;
   }
 
   function getMinimapViewport() {
@@ -4690,7 +4573,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
 
   function renderMinimapOverlay() {
     const viewport = getMinimapViewport();
-    const minimap = window.__minibiaGameClient?.renderer?.minimap;
+    const minimap = window.gameClient?.renderer?.minimap;
     const playerPosition = normalizePosition(bot.getPlayerPosition());
     const root = ensureMinimapOverlayRoot();
     const canvas = root.querySelector("canvas");
@@ -4955,7 +4838,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
     const to = new Position(waypoint.x, waypoint.y, waypoint.z);
 
     try {
-      window.__minibiaGameClient?.world?.pathfinder?.findPath?.(from, to);
+      window.gameClient?.world?.pathfinder?.findPath?.(from, to);
       state.lastPathAt = Date.now();
       bot.log("cave pathing to waypoint", {
         ...waypoint,
@@ -5054,11 +4937,11 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
   }
 
   function getEquipment() {
-    return window.__minibiaGameClient?.player?.equipment || null;
+    return window.gameClient?.player?.equipment || null;
   }
 
   function getOpenContainers() {
-    return Array.from(window.__minibiaGameClient?.player?.__openedContainers || []);
+    return Array.from(window.gameClient?.player?.__openedContainers || []);
   }
 
   function findAdjacentWalkablePosition(targetPosition, playerPosition) {
@@ -5085,7 +4968,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
         targetPosition.y + offset.y,
         targetPosition.z
       );
-      const tile = window.__minibiaGameClient?.world?.getTileFromWorldPosition?.(position);
+      const tile = window.gameClient?.world?.getTileFromWorldPosition?.(position);
       if (tile?.isWalkable?.()) {
         return normalizePosition(position);
       }
@@ -5154,7 +5037,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
       }
     }
 
-    window.__minibiaGameClient?.mouse?.__handleItemUseWith?.(
+    window.gameClient?.mouse?.__handleItemUseWith?.(
       { which: tool.which, index: tool.index },
       { which: targetTile, index: 0xFF }
     );
@@ -5214,7 +5097,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
     }
 
     if (isLadderTile(targetTile)) {
-      window.__minibiaGameClient?.mouse?.use?.({ which: targetTile, index: 0xFF });
+      window.gameClient?.mouse?.use?.({ which: targetTile, index: 0xFF });
       state.lastStairsUseAt = now;
       state.lastPathAt = now;
       markPendingTransitionSource(targetPosition);
@@ -5234,7 +5117,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
       return false;
     }
 
-    window.__minibiaGameClient?.mouse?.use?.({ which: currentTile, index: 0xFF });
+    window.gameClient?.mouse?.use?.({ which: currentTile, index: 0xFF });
     state.lastStairsUseAt = now;
     state.lastPathAt = now;
     markPendingTransitionSource(position);
@@ -5258,7 +5141,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
       return false;
     }
 
-    window.__minibiaGameClient?.mouse?.use?.({ which: targetTile, index: 0xFF });
+    window.gameClient?.mouse?.use?.({ which: targetTile, index: 0xFF });
     state.lastStairsUseAt = now;
     state.lastPathAt = now;
     markPendingTransitionSource(targetPosition);
@@ -5334,7 +5217,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
       { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }, { x: 1, y: 1 },
     ];
 
-    const pathfinder = window.__minibiaGameClient?.world?.pathfinder;
+    const pathfinder = window.gameClient?.world?.pathfinder;
     const startTile = getTileAt(playerPosition);
     if (!pathfinder || !startTile || typeof pathfinder.search !== "function") {
       const dx = Math.abs(pos.x - playerPosition.x);
@@ -5364,7 +5247,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
     if (!monsters.length) return 0;
 
     const pauseRange = Math.max(1, Number(config.monsterPauseRange) || 10);
-    const playerId = window.__minibiaGameClient?.player?.id;
+    const playerId = window.gameClient?.player?.id;
 
     let count = 0;
     for (const monster of monsters) {
@@ -5491,7 +5374,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
         state.lastProgressAt = now;
       }
 
-      const playerHasTarget = !!window.__minibiaGameClient?.player?.__target;
+      const playerHasTarget = !!window.gameClient?.player?.__target;
       const attackStatus = bot.attack?.status?.() || null;
       const reachableMonsters = getReachableMonsterCount();
       const combatVisible =
@@ -6036,19 +5919,19 @@ window.__minibiaCopilotBundle.installEquipRingModule = function installEquipRing
   }
 
   function getEquipment() {
-    return window.__minibiaGameClient?.player?.equipment || null;
+    return window.gameClient?.player?.equipment || null;
   }
 
   function getOpenContainers() {
-    return Array.from(window.__minibiaGameClient?.player?.__openedContainers || []);
+    return Array.from(window.gameClient?.player?.__openedContainers || []);
   }
 
   function getItemDefinition(item) {
     if (!item) return null;
 
     return (
-      window.__minibiaGameClient?.itemDefinitionsBySid?.[item.sid] ||
-      window.__minibiaGameClient?.itemDefinitions?.[item.id] ||
+      window.gameClient?.itemDefinitionsBySid?.[item.sid] ||
+      window.gameClient?.itemDefinitions?.[item.id] ||
       null
     );
   }
@@ -6188,7 +6071,7 @@ window.__minibiaCopilotBundle.installEquipRingModule = function installEquipRing
       }
 
       const ringCount = (typeof equippedRing.getCount === "function" ? equippedRing.getCount() : equippedRing.count) || 1;
-      window.__minibiaGameClient.send(new ItemMovePacket(
+      window.gameClient.send(new ItemMovePacket(
         { which: equipment, index: RING_SLOT },
         { which: emptyBackpackSlot.container, index: emptyBackpackSlot.slotIndex },
         ringCount
@@ -6205,7 +6088,7 @@ window.__minibiaCopilotBundle.installEquipRingModule = function installEquipRing
     const source = findBestRingSource();
     if (!source) return false;
 
-    window.__minibiaGameClient.send(new ItemMovePacket(
+    window.gameClient.send(new ItemMovePacket(
       { which: source.container, index: source.slotIndex },
       { which: equipment, index: RING_SLOT },
       source.count || 1
@@ -6388,18 +6271,18 @@ window.__minibiaCopilotBundle.installEquipAmuletModule = function installEquipAm
   }
 
   function getEquipment() {
-    return window.__minibiaGameClient?.player?.equipment || null;
+    return window.gameClient?.player?.equipment || null;
   }
 
   function getOpenContainers() {
-    return Array.from(window.__minibiaGameClient?.player?.__openedContainers || []);
+    return Array.from(window.gameClient?.player?.__openedContainers || []);
   }
 
   function getItemDefinition(item) {
     if (!item) return null;
     return (
-      window.__minibiaGameClient?.itemDefinitionsBySid?.[item.sid] ||
-      window.__minibiaGameClient?.itemDefinitions?.[item.id] ||
+      window.gameClient?.itemDefinitionsBySid?.[item.sid] ||
+      window.gameClient?.itemDefinitions?.[item.id] ||
       null
     );
   }
@@ -6531,7 +6414,7 @@ window.__minibiaCopilotBundle.installEquipAmuletModule = function installEquipAm
       }
 
       const amuletCount = (typeof equippedAmulet.getCount === "function" ? equippedAmulet.getCount() : equippedAmulet.count) || 1;
-      window.__minibiaGameClient.send(new ItemMovePacket(
+      window.gameClient.send(new ItemMovePacket(
         { which: equipment, index: NECKLACE_SLOT },
         { which: emptyBackpackSlot.container, index: emptyBackpackSlot.slotIndex },
         amuletCount
@@ -6548,7 +6431,7 @@ window.__minibiaCopilotBundle.installEquipAmuletModule = function installEquipAm
     const source = findBestAmuletSource();
     if (!source) return false;
 
-    window.__minibiaGameClient.send(new ItemMovePacket(
+    window.gameClient.send(new ItemMovePacket(
       { which: source.container, index: source.slotIndex },
       { which: equipment, index: NECKLACE_SLOT },
       source.count || 1
@@ -6734,7 +6617,7 @@ window.__minibiaCopilotBundle.installAutoEatModule = function installAutoEatModu
   }
 
   function isSated() {
-    const player = window.__minibiaGameClient?.player;
+    const player = window.gameClient?.player;
     const conditions = player?.conditions;
 
     if (conditions?.has && conditions.SATED != null) {
@@ -6963,7 +6846,7 @@ window.__minibiaCopilotBundle.installTalkModule = function installTalkModule(bot
 
   function getSelfNames() {
     return new Set(
-      ["you", bot.getPlayerName?.(), window.__minibiaGameClient?.player?.name, window.__minibiaGameClient?.player?.state?.name]
+      ["you", bot.getPlayerName?.(), window.gameClient?.player?.name, window.gameClient?.player?.state?.name]
         .map((name) => normalizeText(name))
         .filter(Boolean)
     );
@@ -6996,7 +6879,7 @@ window.__minibiaCopilotBundle.installTalkModule = function installTalkModule(bot
   }
 
   function getRawChatEntries() {
-    return (window.__minibiaGameClient?.interface?.channelManager?.channels || []).flatMap((channel) =>
+    return (window.gameClient?.interface?.channelManager?.channels || []).flatMap((channel) =>
       (channel?.__contents || []).map((entry, index) => ({
         channelName: channel?.name || null,
         entry,
@@ -7120,7 +7003,7 @@ window.__minibiaCopilotBundle.installTalkModule = function installTalkModule(bot
 
   function isSenderVisiblePlayer(message) {
     const me = bot.getPlayerPosition?.();
-    const myId = window.__minibiaGameClient?.player?.id;
+    const myId = window.gameClient?.player?.id;
     const senderName = normalizeText(message?.sender);
     const playerType = window.CONST?.TYPES?.PLAYER;
 
@@ -7128,7 +7011,7 @@ window.__minibiaCopilotBundle.installTalkModule = function installTalkModule(bot
       return false;
     }
 
-    return Object.values(window.__minibiaGameClient?.world?.activeCreatures || {}).some((creature) => {
+    return Object.values(window.gameClient?.world?.activeCreatures || {}).some((creature) => {
       if (!creature) {
         return false;
       }
@@ -7603,7 +7486,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
 
   function getItemName(item) {
     if (!item) return "";
-    const gc = window.__minibiaGameClient || {};
+    const gc = window.gameClient || {};
     const id = item.id;
     const candidates = [];
     if (id != null) {
@@ -7734,7 +7617,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
     try {
       if (typeof World !== "undefined" && World?.prototype) return World.prototype;
     } catch (error) {}
-    const world = window.__minibiaGameClient?.world;
+    const world = window.gameClient?.world;
     if (world) return Object.getPrototypeOf(world);
     return null;
   }
@@ -7743,7 +7626,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
     try {
       if (typeof Tile !== "undefined" && Tile?.prototype) return Tile.prototype;
     } catch (error) {}
-    const chunks = window.__minibiaGameClient?.world?.chunks || [];
+    const chunks = window.gameClient?.world?.chunks || [];
     for (const chunk of chunks) {
       const tiles = chunk?.tiles;
       if (Array.isArray(tiles)) {
@@ -7866,7 +7749,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
   }
 
   function getGameViewport() {
-    const canvas = window.__minibiaGameClient?.renderer?.screen?.canvas;
+    const canvas = window.gameClient?.renderer?.screen?.canvas;
     if (!(canvas instanceof HTMLCanvasElement)) return null;
     const rect = canvas.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return null;
@@ -7874,7 +7757,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
   }
 
   function getScalingVector() {
-    const scaling = window.__minibiaGameClient?.interface?.getSpriteScalingVector?.();
+    const scaling = window.gameClient?.interface?.getSpriteScalingVector?.();
     if (scaling && Number.isFinite(scaling.x) && Number.isFinite(scaling.y) && scaling.x > 0 && scaling.y > 0) {
       return { x: scaling.x, y: scaling.y };
     }
@@ -7882,7 +7765,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
   }
 
   function getPlayerMoveOffset() {
-    const offset = window.__minibiaGameClient?.player?.getMoveOffset?.();
+    const offset = window.gameClient?.player?.getMoveOffset?.();
     if (offset && Number.isFinite(offset.x) && Number.isFinite(offset.y)) {
       return { x: offset.x, y: offset.y };
     }
@@ -7901,7 +7784,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
     if (!(canvas instanceof HTMLCanvasElement)) return;
 
     const viewport = getGameViewport();
-    const playerPosition = window.__minibiaGameClient?.player?.getPosition?.();
+    const playerPosition = window.gameClient?.player?.getPosition?.();
 
     if (!viewport || !playerPosition || !state.timers.size) {
       if (canvas.width !== 0) {
@@ -8084,12 +7967,12 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
     const root = ensureOverlayRoot();
     const canvas = root.querySelector("canvas");
     const viewport = getGameViewport();
-    const playerPosition = window.__minibiaGameClient?.player?.getPosition?.();
+    const playerPosition = window.gameClient?.player?.getPosition?.();
     const diagnostic = {
       rootInDom: !!document.getElementById(overlayRootId),
       canvasInDom: !!canvas,
       viewportFound: !!viewport,
-      gameCanvasFound: !!window.__minibiaGameClient?.renderer?.screen?.canvas,
+      gameCanvasFound: !!window.gameClient?.renderer?.screen?.canvas,
       gameCanvasRect: viewport ? {
         left: viewport.rect.left,
         top: viewport.rect.top,
@@ -8148,7 +8031,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
   }
 
   function testTimer(durationSeconds = 20) {
-    const playerPosition = window.__minibiaGameClient?.player?.getPosition?.();
+    const playerPosition = window.gameClient?.player?.getPosition?.();
     if (!playerPosition) {
       bot.log("magic wall test: no player position");
       return false;
@@ -8245,7 +8128,7 @@ window.__minibiaCopilotBundle.installHuntModule = function installHuntModule(bot
   }
 
   function getModalManager() {
-    return window.__minibiaGameClient?.interface?.modalManager || null;
+    return window.gameClient?.interface?.modalManager || null;
   }
 
   function installPatches() {
@@ -8704,7 +8587,7 @@ window.__minibiaCopilotBundle.installAntiBotModule = function installAntiBotModu
 
   // ---------- Hook 3: sondeo del chat ----------
   function readChannelEntries() {
-    const channels = window.__minibiaGameClient?.interface?.channelManager?.channels || [];
+    const channels = window.gameClient?.interface?.channelManager?.channels || [];
     const out = [];
     for (const channel of channels) {
       for (const entry of channel?.__contents || []) {
@@ -9776,7 +9659,7 @@ window.__minibiaCopilotBundle.installAlphaWatchModule = function installAlphaWat
   function getVisibleAlphas() {
     const monsters = bot.xray?.getVisibleMonsters?.({ sameFloorOnly: true }) || [];
     const matcher = getMatcher();
-    const playerId = window.__minibiaGameClient?.player?.id;
+    const playerId = window.gameClient?.player?.id;
     return monsters.filter((creature) => {
       if (!creature || creature.masterId === playerId) return false;
       const name = String(creature.name || "").trim();
@@ -10468,16 +10351,16 @@ window.__minibiaCopilotBundle.installLootbagModule = function installLootbagModu
   }
 
   function getEquipment() {
-    return window.__minibiaGameClient?.player?.equipment || null;
+    return window.gameClient?.player?.equipment || null;
   }
 
   function getOpenContainers() {
-    return Array.from(window.__minibiaGameClient?.player?.__openedContainers || []);
+    return Array.from(window.gameClient?.player?.__openedContainers || []);
   }
 
   function getItemDefinition(item) {
     if (!item) return null;
-    const gc = window.__minibiaGameClient;
+    const gc = window.gameClient;
     return (
       gc?.itemDefinitionsByCid?.[item.id] ||
       gc?.itemDefinitionsBySid?.[item.sid] ||
@@ -10506,12 +10389,12 @@ window.__minibiaCopilotBundle.installLootbagModule = function installLootbagModu
   }
 
   function getPlayerTile() {
-    const player = window.__minibiaGameClient?.player;
+    const player = window.gameClient?.player;
     if (!player) return null;
     const position = player.getPosition?.();
     if (!position) return null;
     if (typeof Position !== "function") return null;
-    const tile = window.__minibiaGameClient?.world?.getTileFromWorldPosition?.(
+    const tile = window.gameClient?.world?.getTileFromWorldPosition?.(
       new Position(position.x, position.y, position.z)
     );
     return tile || null;
@@ -10546,7 +10429,7 @@ window.__minibiaCopilotBundle.installLootbagModule = function installLootbagModu
     const to = { which: tile, index: 0xFF };
 
     try {
-      window.__minibiaGameClient.send(new ItemMovePacket(from, to, count));
+      window.gameClient.send(new ItemMovePacket(from, to, count));
     } catch (error) {
       bot.log("lootbag: drop failed", { name: getItemName(item), error: error?.message || error });
       return false;
@@ -10572,7 +10455,7 @@ window.__minibiaCopilotBundle.installLootbagModule = function installLootbagModu
       const now = Date.now();
       if (now - state.lastDropAt < Math.max(0, Number(config.dropCooldownMs) || 0)) return;
 
-      const player = window.__minibiaGameClient?.player;
+      const player = window.gameClient?.player;
       if (!player) return;
       if (player.isInProtectionZone?.()) return;
 
@@ -11388,7 +11271,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
   }
 
   function positionTrackerToastContainer(host) {
-    const canvas = window.__minibiaGameClient?.renderer?.screen?.canvas;
+    const canvas = window.gameClient?.renderer?.screen?.canvas;
     const rect = canvas?.getBoundingClientRect?.();
     if (rect && rect.width > 0 && rect.height > 0) {
       host.style.left = `${Math.round(rect.left + rect.width / 2)}px`;

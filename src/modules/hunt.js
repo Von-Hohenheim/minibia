@@ -43,7 +43,7 @@ window.__minibiaCopilotBundle.installHuntModule = function installHuntModule(bot
   }
 
   function getModalManager() {
-    return window.__minibiaGameClient?.interface?.modalManager || null;
+    return window.gameClient?.interface?.modalManager || null;
   }
 
   function installPatches() {

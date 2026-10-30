@@ -80,7 +80,7 @@ window.__minibiaCopilotBundle.installTalkModule = function installTalkModule(bot
 
   function getSelfNames() {
     return new Set(
-      ["you", bot.getPlayerName?.(), window.__minibiaGameClient?.player?.name, window.__minibiaGameClient?.player?.state?.name]
+      ["you", bot.getPlayerName?.(), window.gameClient?.player?.name, window.gameClient?.player?.state?.name]
         .map((name) => normalizeText(name))
         .filter(Boolean)
     );
@@ -113,7 +113,7 @@ window.__minibiaCopilotBundle.installTalkModule = function installTalkModule(bot
   }
 
   function getRawChatEntries() {
-    return (window.__minibiaGameClient?.interface?.channelManager?.channels || []).flatMap((channel) =>
+    return (window.gameClient?.interface?.channelManager?.channels || []).flatMap((channel) =>
       (channel?.__contents || []).map((entry, index) => ({
         channelName: channel?.name || null,
         entry,
@@ -237,7 +237,7 @@ window.__minibiaCopilotBundle.installTalkModule = function installTalkModule(bot
 
   function isSenderVisiblePlayer(message) {
     const me = bot.getPlayerPosition?.();
-    const myId = window.__minibiaGameClient?.player?.id;
+    const myId = window.gameClient?.player?.id;
     const senderName = normalizeText(message?.sender);
     const playerType = window.CONST?.TYPES?.PLAYER;
 
@@ -245,7 +245,7 @@ window.__minibiaCopilotBundle.installTalkModule = function installTalkModule(bot
       return false;
     }
 
-    return Object.values(window.__minibiaGameClient?.world?.activeCreatures || {}).some((creature) => {
+    return Object.values(window.gameClient?.world?.activeCreatures || {}).some((creature) => {
       if (!creature) {
         return false;
       }

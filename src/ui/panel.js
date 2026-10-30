@@ -660,7 +660,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
   }
 
   function positionTrackerToastContainer(host) {
-    const canvas = window.__minibiaGameClient?.renderer?.screen?.canvas;
+    const canvas = window.gameClient?.renderer?.screen?.canvas;
     const rect = canvas?.getBoundingClientRect?.();
     if (rect && rect.width > 0 && rect.height > 0) {
       host.style.left = `${Math.round(rect.left + rect.width / 2)}px`;

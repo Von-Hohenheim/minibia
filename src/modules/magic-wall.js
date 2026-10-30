@@ -48,7 +48,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
 
   function getItemName(item) {
     if (!item) return "";
-    const gc = window.__minibiaGameClient || {};
+    const gc = window.gameClient || {};
     const id = item.id;
     const candidates = [];
     if (id != null) {
@@ -179,7 +179,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
     try {
       if (typeof World !== "undefined" && World?.prototype) return World.prototype;
     } catch (error) {}
-    const world = window.__minibiaGameClient?.world;
+    const world = window.gameClient?.world;
     if (world) return Object.getPrototypeOf(world);
     return null;
   }
@@ -188,7 +188,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
     try {
       if (typeof Tile !== "undefined" && Tile?.prototype) return Tile.prototype;
     } catch (error) {}
-    const chunks = window.__minibiaGameClient?.world?.chunks || [];
+    const chunks = window.gameClient?.world?.chunks || [];
     for (const chunk of chunks) {
       const tiles = chunk?.tiles;
       if (Array.isArray(tiles)) {
@@ -311,7 +311,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
   }
 
   function getGameViewport() {
-    const canvas = window.__minibiaGameClient?.renderer?.screen?.canvas;
+    const canvas = window.gameClient?.renderer?.screen?.canvas;
     if (!(canvas instanceof HTMLCanvasElement)) return null;
     const rect = canvas.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return null;
@@ -319,7 +319,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
   }
 
   function getScalingVector() {
-    const scaling = window.__minibiaGameClient?.interface?.getSpriteScalingVector?.();
+    const scaling = window.gameClient?.interface?.getSpriteScalingVector?.();
     if (scaling && Number.isFinite(scaling.x) && Number.isFinite(scaling.y) && scaling.x > 0 && scaling.y > 0) {
       return { x: scaling.x, y: scaling.y };
     }
@@ -327,7 +327,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
   }
 
   function getPlayerMoveOffset() {
-    const offset = window.__minibiaGameClient?.player?.getMoveOffset?.();
+    const offset = window.gameClient?.player?.getMoveOffset?.();
     if (offset && Number.isFinite(offset.x) && Number.isFinite(offset.y)) {
       return { x: offset.x, y: offset.y };
     }
@@ -346,7 +346,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
     if (!(canvas instanceof HTMLCanvasElement)) return;
 
     const viewport = getGameViewport();
-    const playerPosition = window.__minibiaGameClient?.player?.getPosition?.();
+    const playerPosition = window.gameClient?.player?.getPosition?.();
 
     if (!viewport || !playerPosition || !state.timers.size) {
       if (canvas.width !== 0) {
@@ -529,12 +529,12 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
     const root = ensureOverlayRoot();
     const canvas = root.querySelector("canvas");
     const viewport = getGameViewport();
-    const playerPosition = window.__minibiaGameClient?.player?.getPosition?.();
+    const playerPosition = window.gameClient?.player?.getPosition?.();
     const diagnostic = {
       rootInDom: !!document.getElementById(overlayRootId),
       canvasInDom: !!canvas,
       viewportFound: !!viewport,
-      gameCanvasFound: !!window.__minibiaGameClient?.renderer?.screen?.canvas,
+      gameCanvasFound: !!window.gameClient?.renderer?.screen?.canvas,
       gameCanvasRect: viewport ? {
         left: viewport.rect.left,
         top: viewport.rect.top,
@@ -593,7 +593,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
   }
 
   function testTimer(durationSeconds = 20) {
-    const playerPosition = window.__minibiaGameClient?.player?.getPosition?.();
+    const playerPosition = window.gameClient?.player?.getPosition?.();
     if (!playerPosition) {
       bot.log("magic wall test: no player position");
       return false;

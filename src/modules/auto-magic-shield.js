@@ -28,7 +28,7 @@ window.__minibiaCopilotBundle.installAutoMagicShieldModule = function installAut
 
   function getMagicShieldConditionId() {
     const conditionManagerPrototype = window.ConditionManager?.prototype;
-    const playerConditions = window.__minibiaGameClient?.player?.conditions;
+    const playerConditions = window.gameClient?.player?.conditions;
     const candidateKeys = [
       "MAGIC_SHIELD",
       "MANA_SHIELD",
@@ -48,7 +48,7 @@ window.__minibiaCopilotBundle.installAutoMagicShieldModule = function installAut
   }
 
   function isMagicShieldActive(now = Date.now()) {
-    const player = window.__minibiaGameClient?.player;
+    const player = window.gameClient?.player;
     const conditions = player?.conditions;
     const magicShieldConditionId = getMagicShieldConditionId();
 

@@ -54,7 +54,7 @@ window.__minibiaCopilotBundle.installAutoEatModule = function installAutoEatModu
   }
 
   function isSated() {
-    const player = window.__minibiaGameClient?.player;
+    const player = window.gameClient?.player;
     const conditions = player?.conditions;
 
     if (conditions?.has && conditions.SATED != null) {
