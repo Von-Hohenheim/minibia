@@ -247,7 +247,7 @@ window.__minibiaCopilotBundle.installAntiBotModule = function installAntiBotModu
 
   // ---------- Hook 3: sondeo del chat ----------
   function readChannelEntries() {
-    const channels = window.gameClient?.interface?.channelManager?.channels || [];
+    const channels = window.__minibiaGameClient?.interface?.channelManager?.channels || [];
     const out = [];
     for (const channel of channels) {
       for (const entry of channel?.__contents || []) {

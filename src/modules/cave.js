@@ -526,7 +526,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
       return null;
     }
 
-    return window.gameClient?.world?.getTileFromWorldPosition?.(
+    return window.__minibiaGameClient?.world?.getTileFromWorldPosition?.(
       new Position(position.x, position.y, position.z)
     ) || null;
   }
@@ -541,9 +541,9 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
     }
 
     return (
-      window.gameClient?.itemDefinitionsByCid?.[itemId] ||
-      window.gameClient?.itemDefinitionsBySid?.[itemId] ||
-      window.gameClient?.itemDefinitions?.[itemId] ||
+      window.__minibiaGameClient?.itemDefinitionsByCid?.[itemId] ||
+      window.__minibiaGameClient?.itemDefinitionsBySid?.[itemId] ||
+      window.__minibiaGameClient?.itemDefinitions?.[itemId] ||
       null
     );
   }
@@ -697,7 +697,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
   }
 
   function getLoadedTiles() {
-    const chunks = window.gameClient?.world?.chunks || [];
+    const chunks = window.__minibiaGameClient?.world?.chunks || [];
     const tiles = [];
 
     for (const chunk of chunks) {
@@ -755,7 +755,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
   }
 
   function getMinimapCanvas() {
-    return window.gameClient?.renderer?.minimap?.minimap?.canvas || document.getElementById("minimap") || null;
+    return window.__minibiaGameClient?.renderer?.minimap?.minimap?.canvas || document.getElementById("minimap") || null;
   }
 
   function getMinimapViewport() {
@@ -796,7 +796,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
 
   function renderMinimapOverlay() {
     const viewport = getMinimapViewport();
-    const minimap = window.gameClient?.renderer?.minimap;
+    const minimap = window.__minibiaGameClient?.renderer?.minimap;
     const playerPosition = normalizePosition(bot.getPlayerPosition());
     const root = ensureMinimapOverlayRoot();
     const canvas = root.querySelector("canvas");
@@ -1061,7 +1061,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
     const to = new Position(waypoint.x, waypoint.y, waypoint.z);
 
     try {
-      window.gameClient?.world?.pathfinder?.findPath?.(from, to);
+      window.__minibiaGameClient?.world?.pathfinder?.findPath?.(from, to);
       state.lastPathAt = Date.now();
       bot.log("cave pathing to waypoint", {
         ...waypoint,
@@ -1160,11 +1160,11 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
   }
 
   function getEquipment() {
-    return window.gameClient?.player?.equipment || null;
+    return window.__minibiaGameClient?.player?.equipment || null;
   }
 
   function getOpenContainers() {
-    return Array.from(window.gameClient?.player?.__openedContainers || []);
+    return Array.from(window.__minibiaGameClient?.player?.__openedContainers || []);
   }
 
   function findAdjacentWalkablePosition(targetPosition, playerPosition) {
@@ -1191,7 +1191,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
         targetPosition.y + offset.y,
         targetPosition.z
       );
-      const tile = window.gameClient?.world?.getTileFromWorldPosition?.(position);
+      const tile = window.__minibiaGameClient?.world?.getTileFromWorldPosition?.(position);
       if (tile?.isWalkable?.()) {
         return normalizePosition(position);
       }
@@ -1260,7 +1260,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
       }
     }
 
-    window.gameClient?.mouse?.__handleItemUseWith?.(
+    window.__minibiaGameClient?.mouse?.__handleItemUseWith?.(
       { which: tool.which, index: tool.index },
       { which: targetTile, index: 0xFF }
     );
@@ -1320,7 +1320,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
     }
 
     if (isLadderTile(targetTile)) {
-      window.gameClient?.mouse?.use?.({ which: targetTile, index: 0xFF });
+      window.__minibiaGameClient?.mouse?.use?.({ which: targetTile, index: 0xFF });
       state.lastStairsUseAt = now;
       state.lastPathAt = now;
       markPendingTransitionSource(targetPosition);
@@ -1340,7 +1340,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
       return false;
     }
 
-    window.gameClient?.mouse?.use?.({ which: currentTile, index: 0xFF });
+    window.__minibiaGameClient?.mouse?.use?.({ which: currentTile, index: 0xFF });
     state.lastStairsUseAt = now;
     state.lastPathAt = now;
     markPendingTransitionSource(position);
@@ -1364,7 +1364,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
       return false;
     }
 
-    window.gameClient?.mouse?.use?.({ which: targetTile, index: 0xFF });
+    window.__minibiaGameClient?.mouse?.use?.({ which: targetTile, index: 0xFF });
     state.lastStairsUseAt = now;
     state.lastPathAt = now;
     markPendingTransitionSource(targetPosition);
@@ -1440,7 +1440,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
       { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }, { x: 1, y: 1 },
     ];
 
-    const pathfinder = window.gameClient?.world?.pathfinder;
+    const pathfinder = window.__minibiaGameClient?.world?.pathfinder;
     const startTile = getTileAt(playerPosition);
     if (!pathfinder || !startTile || typeof pathfinder.search !== "function") {
       const dx = Math.abs(pos.x - playerPosition.x);
@@ -1470,7 +1470,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
     if (!monsters.length) return 0;
 
     const pauseRange = Math.max(1, Number(config.monsterPauseRange) || 10);
-    const playerId = window.gameClient?.player?.id;
+    const playerId = window.__minibiaGameClient?.player?.id;
 
     let count = 0;
     for (const monster of monsters) {
@@ -1597,7 +1597,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
         state.lastProgressAt = now;
       }
 
-      const playerHasTarget = !!window.gameClient?.player?.__target;
+      const playerHasTarget = !!window.__minibiaGameClient?.player?.__target;
       const attackStatus = bot.attack?.status?.() || null;
       const reachableMonsters = getReachableMonsterCount();
       const combatVisible =

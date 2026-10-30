@@ -615,7 +615,7 @@ window.__minibiaCopilotBundle.installPzModule = function installPzModule(bot) {
   const homeStorageKey = "minibiaCopilot.pz.home";
 
   function getLoadedTiles() {
-    const chunks = window.gameClient?.world?.chunks || [];
+    const chunks = window.__minibiaGameClient?.world?.chunks || [];
     const tiles = [];
 
     for (const chunk of chunks) {
@@ -665,7 +665,7 @@ window.__minibiaCopilotBundle.installPzModule = function installPzModule(bot) {
     const to = new Position(p.x, p.y, p.z);
 
     try {
-      window.gameClient?.world?.pathfinder?.findPath?.(from, to);
+      window.__minibiaGameClient?.world?.pathfinder?.findPath?.(from, to);
       bot.log("pathing to", { x: p.x, y: p.y, z: p.z, flags: tile.flags });
       return true;
     } catch (error) {
@@ -857,10 +857,10 @@ window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot
 
   function getTrackedCreatures() {
     const myState = bot.getPlayerState();
-    const myId = window.gameClient?.player?.id;
+    const myId = window.__minibiaGameClient?.player?.id;
     const myName = normalizeName(myState?.name);
 
-    return Object.values(window.gameClient?.world?.activeCreatures || {}).filter((creature) => {
+    return Object.values(window.__minibiaGameClient?.world?.activeCreatures || {}).filter((creature) => {
       if (!creature) return false;
       if (creature.id === myId) return false;
 
@@ -1373,7 +1373,7 @@ window.__minibiaCopilotBundle.installPanicModule = function installPanicModule(b
   }
 
   function getRecentChannelMessages() {
-    return (window.gameClient?.interface?.channelManager?.channels || []).flatMap((channel) =>
+    return (window.__minibiaGameClient?.interface?.channelManager?.channels || []).flatMap((channel) =>
       (channel?.__contents || []).map((entry) => ({
         channelName: channel?.name || null,
         message: String(entry?.message || ""),
@@ -1926,7 +1926,7 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
   }
 
   function isSated() {
-    const player = window.gameClient?.player;
+    const player = window.__minibiaGameClient?.player;
     const conditions = player?.conditions;
 
     if (conditions?.has && conditions.SATED != null) {
@@ -1942,15 +1942,15 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
   }
 
   function getOpenContainers() {
-    return Array.from(window.gameClient?.player?.__openedContainers || []);
+    return Array.from(window.__minibiaGameClient?.player?.__openedContainers || []);
   }
 
   function getItemDefinition(item) {
     if (!item) return null;
 
     return (
-      window.gameClient?.itemDefinitionsBySid?.[item.sid] ||
-      window.gameClient?.itemDefinitions?.[item.id] ||
+      window.__minibiaGameClient?.itemDefinitionsBySid?.[item.sid] ||
+      window.__minibiaGameClient?.itemDefinitions?.[item.id] ||
       null
     );
   }
@@ -1999,7 +1999,7 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
   }
 
   function clickContainerUse() {
-    const menu = window.gameClient?.interface?.menuManager?.menus?.["container-menu"];
+    const menu = window.__minibiaGameClient?.interface?.menuManager?.menus?.["container-menu"];
     const root = menu?.element;
     if (!root) return false;
 
@@ -2566,7 +2566,7 @@ window.__minibiaCopilotBundle.installAutoInvisibleModule = function installAutoI
   }
 
   function isInvisibleActive() {
-    const player = window.gameClient?.player;
+    const player = window.__minibiaGameClient?.player;
     const conditions = player?.conditions;
     const invisibleConditionId = getInvisibleConditionId();
 
@@ -2780,7 +2780,7 @@ window.__minibiaCopilotBundle.installAutoMagicShieldModule = function installAut
 
   function getMagicShieldConditionId() {
     const conditionManagerPrototype = window.ConditionManager?.prototype;
-    const playerConditions = window.gameClient?.player?.conditions;
+    const playerConditions = window.__minibiaGameClient?.player?.conditions;
     const candidateKeys = [
       "MAGIC_SHIELD",
       "MANA_SHIELD",
@@ -2800,7 +2800,7 @@ window.__minibiaCopilotBundle.installAutoMagicShieldModule = function installAut
   }
 
   function isMagicShieldActive(now = Date.now()) {
-    const player = window.gameClient?.player;
+    const player = window.__minibiaGameClient?.player;
     const conditions = player?.conditions;
     const magicShieldConditionId = getMagicShieldConditionId();
 
@@ -3118,11 +3118,11 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
   }
 
   function getCurrentTarget() {
-    return window.gameClient?.player?.__target || null;
+    return window.__minibiaGameClient?.player?.__target || null;
   }
 
   function getCurrentFollowTarget() {
-    return window.gameClient?.player?.__followTarget || null;
+    return window.__minibiaGameClient?.player?.__followTarget || null;
   }
 
   function pruneSkippedTargets(now = Date.now()) {
@@ -3148,7 +3148,7 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
   }
 
   function clearCurrentFollowTarget() {
-    if (!window.gameClient?.player || typeof window.gameClient.send !== "function") {
+    if (!window.__minibiaGameClient?.player || typeof window.__minibiaGameClient.send !== "function") {
       return false;
     }
 
@@ -3160,13 +3160,13 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
       return false;
     }
 
-    window.gameClient.player.setFollowTarget(null);
-    window.gameClient.send(new FollowPacket(0));
+    window.__minibiaGameClient.player.setFollowTarget(null);
+    window.__minibiaGameClient.send(new FollowPacket(0));
     return true;
   }
 
   function clearCurrentTarget() {
-    if (!window.gameClient?.player || typeof window.gameClient.send !== "function") {
+    if (!window.__minibiaGameClient?.player || typeof window.__minibiaGameClient.send !== "function") {
       return false;
     }
 
@@ -3178,8 +3178,8 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
       return false;
     }
 
-    window.gameClient.player.setTarget(null);
-    window.gameClient.send(new TargetPacket(0));
+    window.__minibiaGameClient.player.setTarget(null);
+    window.__minibiaGameClient.send(new TargetPacket(0));
     return true;
   }
 
@@ -3237,7 +3237,7 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
   }
 
   function setCurrentTarget(target) {
-    if (!target || !window.gameClient?.player || typeof window.gameClient.send !== "function") {
+    if (!target || !window.__minibiaGameClient?.player || typeof window.__minibiaGameClient.send !== "function") {
       return false;
     }
 
@@ -3245,14 +3245,14 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
       return false;
     }
 
-    window.gameClient.player.setTarget(target);
-    window.gameClient.send(new TargetPacket(target.id));
+    window.__minibiaGameClient.player.setTarget(target);
+    window.__minibiaGameClient.send(new TargetPacket(target.id));
     state.engagedTargetId = target.id;
     return true;
   }
 
   function setCurrentFollowTarget(target) {
-    if (!target || !window.gameClient?.player || typeof window.gameClient.send !== "function") {
+    if (!target || !window.__minibiaGameClient?.player || typeof window.__minibiaGameClient.send !== "function") {
       return false;
     }
 
@@ -3264,8 +3264,8 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
       return true;
     }
 
-    window.gameClient.player.setFollowTarget(target);
-    window.gameClient.send(new FollowPacket(target.id));
+    window.__minibiaGameClient.player.setFollowTarget(target);
+    window.__minibiaGameClient.send(new FollowPacket(target.id));
     return true;
   }
 
@@ -3359,7 +3359,7 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
       return null;
     }
 
-    return window.gameClient?.world?.getTileFromWorldPosition?.(
+    return window.__minibiaGameClient?.world?.getTileFromWorldPosition?.(
       new Position(position.x, position.y, position.z)
     ) || null;
   }
@@ -3382,7 +3382,7 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
       return da - db;
     });
 
-    const pathfinder = window.gameClient?.world?.pathfinder;
+    const pathfinder = window.__minibiaGameClient?.world?.pathfinder;
     const startTile = getTileFromPosition(playerPosition);
     if (!pathfinder || !startTile || typeof pathfinder.search !== "function") {
       return null;
@@ -4319,7 +4319,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
       return null;
     }
 
-    return window.gameClient?.world?.getTileFromWorldPosition?.(
+    return window.__minibiaGameClient?.world?.getTileFromWorldPosition?.(
       new Position(position.x, position.y, position.z)
     ) || null;
   }
@@ -4334,9 +4334,9 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
     }
 
     return (
-      window.gameClient?.itemDefinitionsByCid?.[itemId] ||
-      window.gameClient?.itemDefinitionsBySid?.[itemId] ||
-      window.gameClient?.itemDefinitions?.[itemId] ||
+      window.__minibiaGameClient?.itemDefinitionsByCid?.[itemId] ||
+      window.__minibiaGameClient?.itemDefinitionsBySid?.[itemId] ||
+      window.__minibiaGameClient?.itemDefinitions?.[itemId] ||
       null
     );
   }
@@ -4490,7 +4490,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
   }
 
   function getLoadedTiles() {
-    const chunks = window.gameClient?.world?.chunks || [];
+    const chunks = window.__minibiaGameClient?.world?.chunks || [];
     const tiles = [];
 
     for (const chunk of chunks) {
@@ -4548,7 +4548,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
   }
 
   function getMinimapCanvas() {
-    return window.gameClient?.renderer?.minimap?.minimap?.canvas || document.getElementById("minimap") || null;
+    return window.__minibiaGameClient?.renderer?.minimap?.minimap?.canvas || document.getElementById("minimap") || null;
   }
 
   function getMinimapViewport() {
@@ -4589,7 +4589,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
 
   function renderMinimapOverlay() {
     const viewport = getMinimapViewport();
-    const minimap = window.gameClient?.renderer?.minimap;
+    const minimap = window.__minibiaGameClient?.renderer?.minimap;
     const playerPosition = normalizePosition(bot.getPlayerPosition());
     const root = ensureMinimapOverlayRoot();
     const canvas = root.querySelector("canvas");
@@ -4854,7 +4854,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
     const to = new Position(waypoint.x, waypoint.y, waypoint.z);
 
     try {
-      window.gameClient?.world?.pathfinder?.findPath?.(from, to);
+      window.__minibiaGameClient?.world?.pathfinder?.findPath?.(from, to);
       state.lastPathAt = Date.now();
       bot.log("cave pathing to waypoint", {
         ...waypoint,
@@ -4953,11 +4953,11 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
   }
 
   function getEquipment() {
-    return window.gameClient?.player?.equipment || null;
+    return window.__minibiaGameClient?.player?.equipment || null;
   }
 
   function getOpenContainers() {
-    return Array.from(window.gameClient?.player?.__openedContainers || []);
+    return Array.from(window.__minibiaGameClient?.player?.__openedContainers || []);
   }
 
   function findAdjacentWalkablePosition(targetPosition, playerPosition) {
@@ -4984,7 +4984,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
         targetPosition.y + offset.y,
         targetPosition.z
       );
-      const tile = window.gameClient?.world?.getTileFromWorldPosition?.(position);
+      const tile = window.__minibiaGameClient?.world?.getTileFromWorldPosition?.(position);
       if (tile?.isWalkable?.()) {
         return normalizePosition(position);
       }
@@ -5053,7 +5053,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
       }
     }
 
-    window.gameClient?.mouse?.__handleItemUseWith?.(
+    window.__minibiaGameClient?.mouse?.__handleItemUseWith?.(
       { which: tool.which, index: tool.index },
       { which: targetTile, index: 0xFF }
     );
@@ -5113,7 +5113,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
     }
 
     if (isLadderTile(targetTile)) {
-      window.gameClient?.mouse?.use?.({ which: targetTile, index: 0xFF });
+      window.__minibiaGameClient?.mouse?.use?.({ which: targetTile, index: 0xFF });
       state.lastStairsUseAt = now;
       state.lastPathAt = now;
       markPendingTransitionSource(targetPosition);
@@ -5133,7 +5133,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
       return false;
     }
 
-    window.gameClient?.mouse?.use?.({ which: currentTile, index: 0xFF });
+    window.__minibiaGameClient?.mouse?.use?.({ which: currentTile, index: 0xFF });
     state.lastStairsUseAt = now;
     state.lastPathAt = now;
     markPendingTransitionSource(position);
@@ -5157,7 +5157,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
       return false;
     }
 
-    window.gameClient?.mouse?.use?.({ which: targetTile, index: 0xFF });
+    window.__minibiaGameClient?.mouse?.use?.({ which: targetTile, index: 0xFF });
     state.lastStairsUseAt = now;
     state.lastPathAt = now;
     markPendingTransitionSource(targetPosition);
@@ -5233,7 +5233,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
       { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }, { x: 1, y: 1 },
     ];
 
-    const pathfinder = window.gameClient?.world?.pathfinder;
+    const pathfinder = window.__minibiaGameClient?.world?.pathfinder;
     const startTile = getTileAt(playerPosition);
     if (!pathfinder || !startTile || typeof pathfinder.search !== "function") {
       const dx = Math.abs(pos.x - playerPosition.x);
@@ -5263,7 +5263,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
     if (!monsters.length) return 0;
 
     const pauseRange = Math.max(1, Number(config.monsterPauseRange) || 10);
-    const playerId = window.gameClient?.player?.id;
+    const playerId = window.__minibiaGameClient?.player?.id;
 
     let count = 0;
     for (const monster of monsters) {
@@ -5390,7 +5390,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
         state.lastProgressAt = now;
       }
 
-      const playerHasTarget = !!window.gameClient?.player?.__target;
+      const playerHasTarget = !!window.__minibiaGameClient?.player?.__target;
       const attackStatus = bot.attack?.status?.() || null;
       const reachableMonsters = getReachableMonsterCount();
       const combatVisible =
@@ -5935,19 +5935,19 @@ window.__minibiaCopilotBundle.installEquipRingModule = function installEquipRing
   }
 
   function getEquipment() {
-    return window.gameClient?.player?.equipment || null;
+    return window.__minibiaGameClient?.player?.equipment || null;
   }
 
   function getOpenContainers() {
-    return Array.from(window.gameClient?.player?.__openedContainers || []);
+    return Array.from(window.__minibiaGameClient?.player?.__openedContainers || []);
   }
 
   function getItemDefinition(item) {
     if (!item) return null;
 
     return (
-      window.gameClient?.itemDefinitionsBySid?.[item.sid] ||
-      window.gameClient?.itemDefinitions?.[item.id] ||
+      window.__minibiaGameClient?.itemDefinitionsBySid?.[item.sid] ||
+      window.__minibiaGameClient?.itemDefinitions?.[item.id] ||
       null
     );
   }
@@ -6087,7 +6087,7 @@ window.__minibiaCopilotBundle.installEquipRingModule = function installEquipRing
       }
 
       const ringCount = (typeof equippedRing.getCount === "function" ? equippedRing.getCount() : equippedRing.count) || 1;
-      window.gameClient.send(new ItemMovePacket(
+      window.__minibiaGameClient.send(new ItemMovePacket(
         { which: equipment, index: RING_SLOT },
         { which: emptyBackpackSlot.container, index: emptyBackpackSlot.slotIndex },
         ringCount
@@ -6104,7 +6104,7 @@ window.__minibiaCopilotBundle.installEquipRingModule = function installEquipRing
     const source = findBestRingSource();
     if (!source) return false;
 
-    window.gameClient.send(new ItemMovePacket(
+    window.__minibiaGameClient.send(new ItemMovePacket(
       { which: source.container, index: source.slotIndex },
       { which: equipment, index: RING_SLOT },
       source.count || 1
@@ -6287,18 +6287,18 @@ window.__minibiaCopilotBundle.installEquipAmuletModule = function installEquipAm
   }
 
   function getEquipment() {
-    return window.gameClient?.player?.equipment || null;
+    return window.__minibiaGameClient?.player?.equipment || null;
   }
 
   function getOpenContainers() {
-    return Array.from(window.gameClient?.player?.__openedContainers || []);
+    return Array.from(window.__minibiaGameClient?.player?.__openedContainers || []);
   }
 
   function getItemDefinition(item) {
     if (!item) return null;
     return (
-      window.gameClient?.itemDefinitionsBySid?.[item.sid] ||
-      window.gameClient?.itemDefinitions?.[item.id] ||
+      window.__minibiaGameClient?.itemDefinitionsBySid?.[item.sid] ||
+      window.__minibiaGameClient?.itemDefinitions?.[item.id] ||
       null
     );
   }
@@ -6430,7 +6430,7 @@ window.__minibiaCopilotBundle.installEquipAmuletModule = function installEquipAm
       }
 
       const amuletCount = (typeof equippedAmulet.getCount === "function" ? equippedAmulet.getCount() : equippedAmulet.count) || 1;
-      window.gameClient.send(new ItemMovePacket(
+      window.__minibiaGameClient.send(new ItemMovePacket(
         { which: equipment, index: NECKLACE_SLOT },
         { which: emptyBackpackSlot.container, index: emptyBackpackSlot.slotIndex },
         amuletCount
@@ -6447,7 +6447,7 @@ window.__minibiaCopilotBundle.installEquipAmuletModule = function installEquipAm
     const source = findBestAmuletSource();
     if (!source) return false;
 
-    window.gameClient.send(new ItemMovePacket(
+    window.__minibiaGameClient.send(new ItemMovePacket(
       { which: source.container, index: source.slotIndex },
       { which: equipment, index: NECKLACE_SLOT },
       source.count || 1
@@ -6633,7 +6633,7 @@ window.__minibiaCopilotBundle.installAutoEatModule = function installAutoEatModu
   }
 
   function isSated() {
-    const player = window.gameClient?.player;
+    const player = window.__minibiaGameClient?.player;
     const conditions = player?.conditions;
 
     if (conditions?.has && conditions.SATED != null) {
@@ -6862,7 +6862,7 @@ window.__minibiaCopilotBundle.installTalkModule = function installTalkModule(bot
 
   function getSelfNames() {
     return new Set(
-      ["you", bot.getPlayerName?.(), window.gameClient?.player?.name, window.gameClient?.player?.state?.name]
+      ["you", bot.getPlayerName?.(), window.__minibiaGameClient?.player?.name, window.__minibiaGameClient?.player?.state?.name]
         .map((name) => normalizeText(name))
         .filter(Boolean)
     );
@@ -6895,7 +6895,7 @@ window.__minibiaCopilotBundle.installTalkModule = function installTalkModule(bot
   }
 
   function getRawChatEntries() {
-    return (window.gameClient?.interface?.channelManager?.channels || []).flatMap((channel) =>
+    return (window.__minibiaGameClient?.interface?.channelManager?.channels || []).flatMap((channel) =>
       (channel?.__contents || []).map((entry, index) => ({
         channelName: channel?.name || null,
         entry,
@@ -7019,7 +7019,7 @@ window.__minibiaCopilotBundle.installTalkModule = function installTalkModule(bot
 
   function isSenderVisiblePlayer(message) {
     const me = bot.getPlayerPosition?.();
-    const myId = window.gameClient?.player?.id;
+    const myId = window.__minibiaGameClient?.player?.id;
     const senderName = normalizeText(message?.sender);
     const playerType = window.CONST?.TYPES?.PLAYER;
 
@@ -7027,7 +7027,7 @@ window.__minibiaCopilotBundle.installTalkModule = function installTalkModule(bot
       return false;
     }
 
-    return Object.values(window.gameClient?.world?.activeCreatures || {}).some((creature) => {
+    return Object.values(window.__minibiaGameClient?.world?.activeCreatures || {}).some((creature) => {
       if (!creature) {
         return false;
       }
@@ -7502,7 +7502,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
 
   function getItemName(item) {
     if (!item) return "";
-    const gc = window.gameClient || {};
+    const gc = window.__minibiaGameClient || {};
     const id = item.id;
     const candidates = [];
     if (id != null) {
@@ -7633,7 +7633,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
     try {
       if (typeof World !== "undefined" && World?.prototype) return World.prototype;
     } catch (error) {}
-    const world = window.gameClient?.world;
+    const world = window.__minibiaGameClient?.world;
     if (world) return Object.getPrototypeOf(world);
     return null;
   }
@@ -7642,7 +7642,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
     try {
       if (typeof Tile !== "undefined" && Tile?.prototype) return Tile.prototype;
     } catch (error) {}
-    const chunks = window.gameClient?.world?.chunks || [];
+    const chunks = window.__minibiaGameClient?.world?.chunks || [];
     for (const chunk of chunks) {
       const tiles = chunk?.tiles;
       if (Array.isArray(tiles)) {
@@ -7765,7 +7765,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
   }
 
   function getGameViewport() {
-    const canvas = window.gameClient?.renderer?.screen?.canvas;
+    const canvas = window.__minibiaGameClient?.renderer?.screen?.canvas;
     if (!(canvas instanceof HTMLCanvasElement)) return null;
     const rect = canvas.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return null;
@@ -7773,7 +7773,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
   }
 
   function getScalingVector() {
-    const scaling = window.gameClient?.interface?.getSpriteScalingVector?.();
+    const scaling = window.__minibiaGameClient?.interface?.getSpriteScalingVector?.();
     if (scaling && Number.isFinite(scaling.x) && Number.isFinite(scaling.y) && scaling.x > 0 && scaling.y > 0) {
       return { x: scaling.x, y: scaling.y };
     }
@@ -7781,7 +7781,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
   }
 
   function getPlayerMoveOffset() {
-    const offset = window.gameClient?.player?.getMoveOffset?.();
+    const offset = window.__minibiaGameClient?.player?.getMoveOffset?.();
     if (offset && Number.isFinite(offset.x) && Number.isFinite(offset.y)) {
       return { x: offset.x, y: offset.y };
     }
@@ -7800,7 +7800,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
     if (!(canvas instanceof HTMLCanvasElement)) return;
 
     const viewport = getGameViewport();
-    const playerPosition = window.gameClient?.player?.getPosition?.();
+    const playerPosition = window.__minibiaGameClient?.player?.getPosition?.();
 
     if (!viewport || !playerPosition || !state.timers.size) {
       if (canvas.width !== 0) {
@@ -7983,12 +7983,12 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
     const root = ensureOverlayRoot();
     const canvas = root.querySelector("canvas");
     const viewport = getGameViewport();
-    const playerPosition = window.gameClient?.player?.getPosition?.();
+    const playerPosition = window.__minibiaGameClient?.player?.getPosition?.();
     const diagnostic = {
       rootInDom: !!document.getElementById(overlayRootId),
       canvasInDom: !!canvas,
       viewportFound: !!viewport,
-      gameCanvasFound: !!window.gameClient?.renderer?.screen?.canvas,
+      gameCanvasFound: !!window.__minibiaGameClient?.renderer?.screen?.canvas,
       gameCanvasRect: viewport ? {
         left: viewport.rect.left,
         top: viewport.rect.top,
@@ -8047,7 +8047,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
   }
 
   function testTimer(durationSeconds = 20) {
-    const playerPosition = window.gameClient?.player?.getPosition?.();
+    const playerPosition = window.__minibiaGameClient?.player?.getPosition?.();
     if (!playerPosition) {
       bot.log("magic wall test: no player position");
       return false;
@@ -8144,7 +8144,7 @@ window.__minibiaCopilotBundle.installHuntModule = function installHuntModule(bot
   }
 
   function getModalManager() {
-    return window.gameClient?.interface?.modalManager || null;
+    return window.__minibiaGameClient?.interface?.modalManager || null;
   }
 
   function installPatches() {
@@ -8603,7 +8603,7 @@ window.__minibiaCopilotBundle.installAntiBotModule = function installAntiBotModu
 
   // ---------- Hook 3: sondeo del chat ----------
   function readChannelEntries() {
-    const channels = window.gameClient?.interface?.channelManager?.channels || [];
+    const channels = window.__minibiaGameClient?.interface?.channelManager?.channels || [];
     const out = [];
     for (const channel of channels) {
       for (const entry of channel?.__contents || []) {
@@ -9675,7 +9675,7 @@ window.__minibiaCopilotBundle.installAlphaWatchModule = function installAlphaWat
   function getVisibleAlphas() {
     const monsters = bot.xray?.getVisibleMonsters?.({ sameFloorOnly: true }) || [];
     const matcher = getMatcher();
-    const playerId = window.gameClient?.player?.id;
+    const playerId = window.__minibiaGameClient?.player?.id;
     return monsters.filter((creature) => {
       if (!creature || creature.masterId === playerId) return false;
       const name = String(creature.name || "").trim();
@@ -10367,16 +10367,16 @@ window.__minibiaCopilotBundle.installLootbagModule = function installLootbagModu
   }
 
   function getEquipment() {
-    return window.gameClient?.player?.equipment || null;
+    return window.__minibiaGameClient?.player?.equipment || null;
   }
 
   function getOpenContainers() {
-    return Array.from(window.gameClient?.player?.__openedContainers || []);
+    return Array.from(window.__minibiaGameClient?.player?.__openedContainers || []);
   }
 
   function getItemDefinition(item) {
     if (!item) return null;
-    const gc = window.gameClient;
+    const gc = window.__minibiaGameClient;
     return (
       gc?.itemDefinitionsByCid?.[item.id] ||
       gc?.itemDefinitionsBySid?.[item.sid] ||
@@ -10405,12 +10405,12 @@ window.__minibiaCopilotBundle.installLootbagModule = function installLootbagModu
   }
 
   function getPlayerTile() {
-    const player = window.gameClient?.player;
+    const player = window.__minibiaGameClient?.player;
     if (!player) return null;
     const position = player.getPosition?.();
     if (!position) return null;
     if (typeof Position !== "function") return null;
-    const tile = window.gameClient?.world?.getTileFromWorldPosition?.(
+    const tile = window.__minibiaGameClient?.world?.getTileFromWorldPosition?.(
       new Position(position.x, position.y, position.z)
     );
     return tile || null;
@@ -10445,7 +10445,7 @@ window.__minibiaCopilotBundle.installLootbagModule = function installLootbagModu
     const to = { which: tile, index: 0xFF };
 
     try {
-      window.gameClient.send(new ItemMovePacket(from, to, count));
+      window.__minibiaGameClient.send(new ItemMovePacket(from, to, count));
     } catch (error) {
       bot.log("lootbag: drop failed", { name: getItemName(item), error: error?.message || error });
       return false;
@@ -10471,7 +10471,7 @@ window.__minibiaCopilotBundle.installLootbagModule = function installLootbagModu
       const now = Date.now();
       if (now - state.lastDropAt < Math.max(0, Number(config.dropCooldownMs) || 0)) return;
 
-      const player = window.gameClient?.player;
+      const player = window.__minibiaGameClient?.player;
       if (!player) return;
       if (player.isInProtectionZone?.()) return;
 
@@ -11287,7 +11287,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
   }
 
   function positionTrackerToastContainer(host) {
-    const canvas = window.gameClient?.renderer?.screen?.canvas;
+    const canvas = window.__minibiaGameClient?.renderer?.screen?.canvas;
     const rect = canvas?.getBoundingClientRect?.();
     if (rect && rect.width > 0 && rect.height > 0) {
       host.style.left = `${Math.round(rect.left + rect.width / 2)}px`;

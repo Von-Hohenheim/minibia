@@ -33,16 +33,16 @@ window.__minibiaCopilotBundle.installLootbagModule = function installLootbagModu
   }
 
   function getEquipment() {
-    return window.gameClient?.player?.equipment || null;
+    return window.__minibiaGameClient?.player?.equipment || null;
   }
 
   function getOpenContainers() {
-    return Array.from(window.gameClient?.player?.__openedContainers || []);
+    return Array.from(window.__minibiaGameClient?.player?.__openedContainers || []);
   }
 
   function getItemDefinition(item) {
     if (!item) return null;
-    const gc = window.gameClient;
+    const gc = window.__minibiaGameClient;
     return (
       gc?.itemDefinitionsByCid?.[item.id] ||
       gc?.itemDefinitionsBySid?.[item.sid] ||
@@ -71,12 +71,12 @@ window.__minibiaCopilotBundle.installLootbagModule = function installLootbagModu
   }
 
   function getPlayerTile() {
-    const player = window.gameClient?.player;
+    const player = window.__minibiaGameClient?.player;
     if (!player) return null;
     const position = player.getPosition?.();
     if (!position) return null;
     if (typeof Position !== "function") return null;
-    const tile = window.gameClient?.world?.getTileFromWorldPosition?.(
+    const tile = window.__minibiaGameClient?.world?.getTileFromWorldPosition?.(
       new Position(position.x, position.y, position.z)
     );
     return tile || null;
@@ -111,7 +111,7 @@ window.__minibiaCopilotBundle.installLootbagModule = function installLootbagModu
     const to = { which: tile, index: 0xFF };
 
     try {
-      window.gameClient.send(new ItemMovePacket(from, to, count));
+      window.__minibiaGameClient.send(new ItemMovePacket(from, to, count));
     } catch (error) {
       bot.log("lootbag: drop failed", { name: getItemName(item), error: error?.message || error });
       return false;
@@ -137,7 +137,7 @@ window.__minibiaCopilotBundle.installLootbagModule = function installLootbagModu
       const now = Date.now();
       if (now - state.lastDropAt < Math.max(0, Number(config.dropCooldownMs) || 0)) return;
 
-      const player = window.gameClient?.player;
+      const player = window.__minibiaGameClient?.player;
       if (!player) return;
       if (player.isInProtectionZone?.()) return;
 
