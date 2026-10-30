@@ -1,4 +1,4 @@
-window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
   const panelPositionKey = "minibiaCopilot.ui.panelPosition";
@@ -77,7 +77,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
       const floorLabel = status?.config?.selectedFloor == null
         ? "all floors"
         : `${formatFloorOffset(status.config.selectedFloor) ?? "?"}`;
-      overlayLabel.textContent = `${status?.config?.overlayEnabled ? "Overlay: on" : "Overlay: off"} • ${floorLabel}`;
+      overlayLabel.textContent = `${status?.config?.overlayEnabled ? "Overlay: on" : "Overlay: off"} â€¢ ${floorLabel}`;
     }
 
     if (floorSelect) {
@@ -252,7 +252,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
           Number.isFinite(status?.distanceToWaypoint) && status.distanceToWaypoint >= 0
             ? `, dist ${status.distanceToWaypoint}`
             : "";
-        const pausedTag = status.userPaused ? " — PAUSED" : "";
+        const pausedTag = status.userPaused ? " â€” PAUSED" : "";
         statusLabel.textContent = `Status: running (${waypointNumber}/${route.length}${distanceLabel})${pausedTag}`;
       } else {
         statusLabel.textContent = `Status: idle (${route.length} waypoint${route.length === 1 ? "" : "s"})`;
@@ -415,15 +415,15 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     if (hpEl) {
       const cur = snapshot?.health;
       const max = snapshot?.maxHealth;
-      hpEl.textContent = cur != null && max != null ? `${cur}/${max}` : (cur != null ? String(cur) : "—");
+      hpEl.textContent = cur != null && max != null ? `${cur}/${max}` : (cur != null ? String(cur) : "â€”");
     }
     if (manaEl) {
       const cur = snapshot?.mana;
       const max = snapshot?.maxMana;
-      manaEl.textContent = cur != null && max != null ? `${cur}/${max}` : (cur != null ? String(cur) : "—");
+      manaEl.textContent = cur != null && max != null ? `${cur}/${max}` : (cur != null ? String(cur) : "â€”");
     }
     if (levelEl) {
-      levelEl.textContent = snapshot?.level != null ? String(snapshot.level) : "—";
+      levelEl.textContent = snapshot?.level != null ? String(snapshot.level) : "â€”";
     }
   }
 
@@ -433,7 +433,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
   }
 
   function formatNumber(value) {
-    if (value == null || !Number.isFinite(Number(value))) return "—";
+    if (value == null || !Number.isFinite(Number(value))) return "â€”";
     const n = Number(value);
     if (Math.abs(n) >= 1000000) return (n / 1000000).toFixed(2) + "M";
     if (Math.abs(n) >= 1000) return (n / 1000).toFixed(1) + "k";
@@ -491,7 +491,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     if (topMonster) {
       const monsters = Array.isArray(info?.monsters) ? info.monsters.slice().sort((a, b) => (b.count || 0) - (a.count || 0)) : [];
       if (!monsters.length) {
-        topMonster.textContent = "Top kill: —";
+        topMonster.textContent = "Top kill: â€”";
       } else {
         const top3 = monsters.slice(0, 3).map((m) => `${m.name} ${formatNumber(m.count)}`).join(", ");
         topMonster.textContent = `Top kills: ${top3}`;
@@ -501,7 +501,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     if (topLoot) {
       const loot = Array.isArray(info?.loot) ? info.loot.slice().sort((a, b) => (b.count || 0) - (a.count || 0)) : [];
       if (!loot.length) {
-        topLoot.textContent = "Top loot: —";
+        topLoot.textContent = "Top loot: â€”";
       } else {
         const top3 = loot.slice(0, 3).map((l) => `${l.name} ${formatNumber(l.count)}`).join(", ");
         topLoot.textContent = `Top loot: ${top3}`;
@@ -566,9 +566,9 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     }
     if (statusLabel) {
       if (status.lastError) {
-        statusLabel.textContent = "Status: error — " + String(status.lastError).slice(0, 80);
+        statusLabel.textContent = "Status: error â€” " + String(status.lastError).slice(0, 80);
       } else if (status.pollInFlight) {
-        statusLabel.textContent = "Status: fetching…";
+        statusLabel.textContent = "Status: fetchingâ€¦";
       } else if (status.running) {
         const seen = status.onlineCount ? `${status.onlineCount} online site-wide` : "no online data yet";
         const lastAt = status.lastPollAt ? formatRelativeTime(status.lastPollAt) : "never";
@@ -602,7 +602,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
           const levelPart = player.level != null ? `lvl ${escapeHtml(player.level)}` : "";
           const vocationPart = player.vocation ? escapeHtml(player.vocation) : "";
           const metaParts = [levelPart, vocationPart].filter(Boolean);
-          const metaText = metaParts.length ? `<span class="mc-tracked-meta">${metaParts.join(" · ")}</span>` : "";
+          const metaText = metaParts.length ? `<span class="mc-tracked-meta">${metaParts.join(" Â· ")}</span>` : "";
           return (
             `<div class="mc-tracked-row" data-name="${escapeHtml(name)}">` +
               `<span class="mc-tracked-name">` +
@@ -613,8 +613,8 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
                 `</span>` +
               `</span>` +
               `<span class="mc-tracked-actions">` +
-                `<button type="button" class="mc-small-button" data-tracker-swap="${escapeHtml(name)}" title="Move to ${oppositeCategoryLabel}">⇄</button>` +
-                `<button type="button" class="mc-small-button" data-tracker-remove="${escapeHtml(name)}" title="Remove">✕</button>` +
+                `<button type="button" class="mc-small-button" data-tracker-swap="${escapeHtml(name)}" title="Move to ${oppositeCategoryLabel}">â‡„</button>` +
+                `<button type="button" class="mc-small-button" data-tracker-remove="${escapeHtml(name)}" title="Remove">âœ•</button>` +
               `</span>` +
             `</div>`
           );
@@ -635,7 +635,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
             `<div class="mc-death-row">` +
               `<div class="mc-death-head">` +
                 `<span>${escapeHtml(death.name)}${levelTag}</span>` +
-                `<span>${escapeHtml(time)} · ${escapeHtml(rel)}</span>` +
+                `<span>${escapeHtml(time)} Â· ${escapeHtml(rel)}</span>` +
               `</div>` +
               `<div class="mc-death-body">${escapeHtml(death.description || "")}</div>` +
             `</div>`
@@ -660,7 +660,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
   }
 
   function positionTrackerToastContainer(host) {
-    const canvas = window.gameClient?.renderer?.screen?.canvas;
+    const canvas = window.__minibiaGameClient?.renderer?.screen?.canvas;
     const rect = canvas?.getBoundingClientRect?.();
     if (rect && rect.width > 0 && rect.height > 0) {
       host.style.left = `${Math.round(rect.left + rect.width / 2)}px`;
@@ -718,7 +718,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
       <div class="mc-fight-dialog" role="dialog" aria-modal="true">
         <div class="mc-fight-head">
           <h3 class="mc-fight-title">Monster Matchup</h3>
-          <button type="button" id="minibia-copilot-fight-close" aria-label="Close">✕</button>
+          <button type="button" id="minibia-copilot-fight-close" aria-label="Close">âœ•</button>
         </div>
         <div class="mc-fight-pickers">
           <input type="text" id="minibia-copilot-fight-a" list="minibia-copilot-fight-datalist" placeholder="Monster A (e.g. Ferumbras)" autocomplete="off" />
@@ -727,10 +727,10 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
         </div>
         <datalist id="minibia-copilot-fight-datalist"></datalist>
         <div class="mc-fight-actions">
-          <button type="button" id="minibia-copilot-fight-go">⚔ Fight!</button>
+          <button type="button" id="minibia-copilot-fight-go">âš” Fight!</button>
           <button type="button" id="minibia-copilot-fight-refresh-lib">Reload Library</button>
         </div>
-        <div class="mc-fight-status" id="minibia-copilot-fight-status">Loading library…</div>
+        <div class="mc-fight-status" id="minibia-copilot-fight-status">Loading libraryâ€¦</div>
         <div class="mc-fight-result" id="minibia-copilot-fight-result" hidden></div>
       </div>
     `;
@@ -791,7 +791,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
 
   async function loadFightLibrary(force) {
     const statusEl = document.getElementById("minibia-copilot-fight-status");
-    if (statusEl) statusEl.textContent = force ? "Reloading library…" : "Loading library…";
+    if (statusEl) statusEl.textContent = force ? "Reloading libraryâ€¦" : "Loading libraryâ€¦";
     try {
       await bot.fightEstimator?.fetchLibrary?.({ force });
       const status = bot.fightEstimator?.status?.();
@@ -815,13 +815,13 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     }
 
     resultEl.hidden = false;
-    resultEl.innerHTML = '<div class="mc-fight-verdict">Simulating…</div><div class="mc-fight-status">Checking Minibia library and Tibia wiki for missing monsters…</div>';
+    resultEl.innerHTML = '<div class="mc-fight-verdict">Simulatingâ€¦</div><div class="mc-fight-status">Checking Minibia library and Tibia wiki for missing monstersâ€¦</div>';
 
     let outcome;
     try {
       outcome = await bot.fightEstimator?.simulateAsync?.(a, b);
     } catch (error) {
-      resultEl.innerHTML = `<div class="mc-fight-verdict">⚠ ${escapeHtml(error?.message || String(error))}</div>`;
+      resultEl.innerHTML = `<div class="mc-fight-verdict">âš  ${escapeHtml(error?.message || String(error))}</div>`;
       return;
     }
     if (!outcome) {
@@ -829,15 +829,15 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
       return;
     }
     if (outcome.error) {
-      resultEl.innerHTML = `<div class="mc-fight-verdict">⚠ ${escapeHtml(outcome.error)}</div>`;
+      resultEl.innerHTML = `<div class="mc-fight-verdict">âš  ${escapeHtml(outcome.error)}</div>`;
       return;
     }
 
     const verdict = outcome.winner === "a"
-      ? `🏆 ${escapeHtml(outcome.winnerName)} wins — confidence: ${escapeHtml(outcome.confidence)}`
+      ? `ðŸ† ${escapeHtml(outcome.winnerName)} wins â€” confidence: ${escapeHtml(outcome.confidence)}`
       : outcome.winner === "b"
-      ? `🏆 ${escapeHtml(outcome.winnerName)} wins — confidence: ${escapeHtml(outcome.confidence)}`
-      : "🤝 Draw";
+      ? `ðŸ† ${escapeHtml(outcome.winnerName)} wins â€” confidence: ${escapeHtml(outcome.confidence)}`
+      : "ðŸ¤ Draw";
     const winnerKey = outcome.winner;
 
     function renderCard(side, snap) {
@@ -857,7 +857,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
             <dt>Attacks</dt><dd>${escapeHtml(snap.attackCount)}</dd>
             <dt>Est. DPS</dt><dd>${escapeHtml(snap.dps)}</dd>
             <dt>Kills in</dt><dd>${escapeHtml(ttkText)}</dd>
-            <dt>Immune</dt><dd>${escapeHtml(snap.immunities.join(", ") || "—")}</dd>
+            <dt>Immune</dt><dd>${escapeHtml(snap.immunities.join(", ") || "â€”")}</dd>
             <dt>Exp</dt><dd>${escapeHtml(snap.experience)}</dd>
           </dl>
         </div>
@@ -897,7 +897,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
       } else if (!itemCount) {
         statusLabel.textContent = "Status: running but no items configured";
       } else if (status.droppedSinceStart) {
-        const last = status.lastDroppedName ? ` — last: ${status.lastDroppedName}` : "";
+        const last = status.lastDroppedName ? ` â€” last: ${status.lastDroppedName}` : "";
         statusLabel.textContent = `Status: dropped ${status.droppedSinceStart} this session${last}`;
       } else {
         statusLabel.textContent = `Status: watching (${itemCount} item${itemCount === 1 ? "" : "s"})`;
@@ -912,7 +912,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
         list.innerHTML = items.map((name) => (
           `<div class="mc-loot-row" data-name="${escapeHtml(name)}">` +
             `<span>${escapeHtml(name)}</span>` +
-            `<button type="button" class="mc-small-button" data-lootbag-remove="${escapeHtml(name)}" title="Remove">✕</button>` +
+            `<button type="button" class="mc-small-button" data-lootbag-remove="${escapeHtml(name)}" title="Remove">âœ•</button>` +
           `</div>`
         )).join("");
       }
@@ -931,9 +931,9 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
         `<div class="mc-priority-row" data-name="${escapeHtml(name)}">` +
           `<span class="mc-priority-rank">${index + 1}.</span>` +
           `<span class="mc-priority-name">${escapeHtml(name)}</span>` +
-          `<button type="button" class="mc-small-button" data-attack-priority-up="${escapeHtml(name)}" title="Move up">↑</button>` +
-          `<button type="button" class="mc-small-button" data-attack-priority-down="${escapeHtml(name)}" title="Move down">↓</button>` +
-          `<button type="button" class="mc-small-button" data-attack-priority-remove="${escapeHtml(name)}" title="Remove">✕</button>` +
+          `<button type="button" class="mc-small-button" data-attack-priority-up="${escapeHtml(name)}" title="Move up">â†‘</button>` +
+          `<button type="button" class="mc-small-button" data-attack-priority-down="${escapeHtml(name)}" title="Move down">â†“</button>` +
+          `<button type="button" class="mc-small-button" data-attack-priority-remove="${escapeHtml(name)}" title="Remove">âœ•</button>` +
         `</div>`
       )).join("");
     }
@@ -956,10 +956,10 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
       } else {
         const count = status.visibleAlphas?.length || 0;
         if (count === 0) {
-          statusLabel.textContent = "Status: watching — none on screen";
+          statusLabel.textContent = "Status: watching â€” none on screen";
         } else if (count === 1) {
           const a = status.visibleAlphas[0];
-          statusLabel.textContent = `Status: 1 nearby — ${a.name}`;
+          statusLabel.textContent = `Status: 1 nearby â€” ${a.name}`;
         } else {
           statusLabel.textContent = `Status: ${count} alphas nearby`;
         }
@@ -985,10 +985,10 @@ function refreshAntiBotStatus() {
   if (!status) {
     if (enabledInput) enabledInput.checked = false;
     if (statusLabel) statusLabel.textContent =
-      "Estado: módulo no instalado";
+      "Estado: mÃ³dulo no instalado";
 
     if (hooksLabel) hooksLabel.textContent =
-      "Detección: no disponible";
+      "DetecciÃ³n: no disponible";
 
     return;
   }
@@ -1177,7 +1177,7 @@ function refreshAntiBotStatus() {
     }
 
     if (toggle) {
-      toggle.textContent = nextCollapsed ? "+" : "−";
+      toggle.textContent = nextCollapsed ? "+" : "âˆ’";
       toggle.setAttribute("aria-label", nextCollapsed ? "Maximize panel" : "Minimize panel");
       toggle.setAttribute("title", nextCollapsed ? "Maximize" : "Minimize");
     }
@@ -2184,21 +2184,21 @@ function refreshAntiBotStatus() {
       <div class="mc-titlebar">
         <div class="mc-title">Minibia <span class="mc-title-accent">Heim</span></div>
         <div class="mc-titlebar-actions">
-          <button type="button" class="mc-icon-button" id="minibia-copilot-pause-toggle" aria-label="Pausa el Bot" title="Pause all bot actions">⏸</button>
-          <button type="button" class="mc-icon-button" id="minibia-copilot-reload" aria-label="Recargar bot" title="Reload bot">⟳</button>
-          <button type="button" class="mc-icon-button" id="minibia-copilot-collapse" aria-label="Minimizar panel" title="Minimize">−</button>
+          <button type="button" class="mc-icon-button" id="minibia-copilot-pause-toggle" aria-label="Pausa el Bot" title="Pause all bot actions">â¸</button>
+          <button type="button" class="mc-icon-button" id="minibia-copilot-reload" aria-label="Recargar bot" title="Reload bot">âŸ³</button>
+          <button type="button" class="mc-icon-button" id="minibia-copilot-collapse" aria-label="Minimizar panel" title="Minimize">âˆ’</button>
         </div>
       </div>
       <div class="mc-hero" id="minibia-copilot-hero">
         <img src="https://minibia.com/png/minibia-mascot.png" alt="Minibia" referrerpolicy="no-referrer" onerror="this.parentElement.hidden=true" />
       </div>
       <div class="mc-tabs" id="minibia-copilot-tabs">
-        <button type="button" class="mc-tab-button" data-tab="status"><span class="mc-tab-icon">⚡</span><span>Status</span></button>
-        <button type="button" class="mc-tab-button" data-tab="combat"><span class="mc-tab-icon">⚔</span><span>Combat</span></button>
-        <button type="button" class="mc-tab-button" data-tab="survival"><span class="mc-tab-icon">❤</span><span>Survival</span></button>
-        <button type="button" class="mc-tab-button" data-tab="utility"><span class="mc-tab-icon">⚙</span><span>Utility</span></button>
-        <button type="button" class="mc-tab-button" data-tab="navigation"><span class="mc-tab-icon">🗺</span><span>Navigate</span></button>
-        <button type="button" class="mc-tab-button" data-tab="safely"><span class="mc-tab-icon">⚙</span><span>Safely</span></button>
+        <button type="button" class="mc-tab-button" data-tab="status"><span class="mc-tab-icon">âš¡</span><span>Status</span></button>
+        <button type="button" class="mc-tab-button" data-tab="combat"><span class="mc-tab-icon">âš”</span><span>Combat</span></button>
+        <button type="button" class="mc-tab-button" data-tab="survival"><span class="mc-tab-icon">â¤</span><span>Survival</span></button>
+        <button type="button" class="mc-tab-button" data-tab="utility"><span class="mc-tab-icon">âš™</span><span>Utility</span></button>
+        <button type="button" class="mc-tab-button" data-tab="navigation"><span class="mc-tab-icon">ðŸ—º</span><span>Navigate</span></button>
+        <button type="button" class="mc-tab-button" data-tab="safely"><span class="mc-tab-icon">âš™</span><span>Safely</span></button>
       </div>
 
       <div class="mc-body">
@@ -2206,9 +2206,9 @@ function refreshAntiBotStatus() {
         <div class="mc-tab-pane" data-tab="status" hidden>
          
           <div class="mc-snapshot" id="minibia-copilot-snapshot">
-            <div class="mc-stat"><span class="mc-stat-label">HP</span><span class="mc-stat-value" data-tone="hp" id="minibia-copilot-snapshot-hp">—</span></div>
-            <div class="mc-stat"><span class="mc-stat-label">Mana</span><span class="mc-stat-value" data-tone="mana" id="minibia-copilot-snapshot-mana">—</span></div>
-            <div class="mc-stat"><span class="mc-stat-label">Lvl</span><span class="mc-stat-value" data-tone="lvl" id="minibia-copilot-snapshot-level">—</span></div>
+            <div class="mc-stat"><span class="mc-stat-label">HP</span><span class="mc-stat-value" data-tone="hp" id="minibia-copilot-snapshot-hp">â€”</span></div>
+            <div class="mc-stat"><span class="mc-stat-label">Mana</span><span class="mc-stat-value" data-tone="mana" id="minibia-copilot-snapshot-mana">â€”</span></div>
+            <div class="mc-stat"><span class="mc-stat-label">Lvl</span><span class="mc-stat-value" data-tone="lvl" id="minibia-copilot-snapshot-level">â€”</span></div>
           </div>
 
           <div class="mc-section">
@@ -2216,15 +2216,15 @@ function refreshAntiBotStatus() {
             <div class="mc-stack">
               <div class="mc-small-note" id="minibia-copilot-hunt-status">Status: nada pa</div>
               <div class="mc-hunt-grid" id="minibia-copilot-hunt-stats" hidden>
-                <div class="mc-hunt-cell"><span class="mc-field-label">Tiempo</span><span data-key="elapsed">—</span></div>
-                <div class="mc-hunt-cell"><span class="mc-field-label">XP / h</span><span data-key="xpPerHour">—</span></div>
-                <div class="mc-hunt-cell"><span class="mc-field-label">Gold / h</span><span data-key="goldPerHour">—</span></div>
-                <div class="mc-hunt-cell"><span class="mc-field-label">Kills / h</span><span data-key="killsPerHour">—</span></div>
-                <div class="mc-hunt-cell"><span class="mc-field-label">Total XP</span><span data-key="xp">—</span></div>
-                <div class="mc-hunt-cell"><span class="mc-field-label">Total Gold</span><span data-key="gold">—</span></div>
+                <div class="mc-hunt-cell"><span class="mc-field-label">Tiempo</span><span data-key="elapsed">â€”</span></div>
+                <div class="mc-hunt-cell"><span class="mc-field-label">XP / h</span><span data-key="xpPerHour">â€”</span></div>
+                <div class="mc-hunt-cell"><span class="mc-field-label">Gold / h</span><span data-key="goldPerHour">â€”</span></div>
+                <div class="mc-hunt-cell"><span class="mc-field-label">Kills / h</span><span data-key="killsPerHour">â€”</span></div>
+                <div class="mc-hunt-cell"><span class="mc-field-label">Total XP</span><span data-key="xp">â€”</span></div>
+                <div class="mc-hunt-cell"><span class="mc-field-label">Total Gold</span><span data-key="gold">â€”</span></div>
               </div>
-              <div class="mc-small-note" id="minibia-copilot-hunt-top-monster">Top kill: —</div>
-              <div class="mc-small-note" id="minibia-copilot-hunt-top-loot">Top loot: —</div>
+              <div class="mc-small-note" id="minibia-copilot-hunt-top-monster">Top kill: â€”</div>
+              <div class="mc-small-note" id="minibia-copilot-hunt-top-loot">Top loot: â€”</div>
               <label class="mc-toggle">
                 <input type="checkbox" id="minibia-copilot-hunt-autopoll" />
                 <span>Auto-refresh cada 10 segundos</span>
@@ -2280,7 +2280,7 @@ function refreshAntiBotStatus() {
                 <span class="mc-field-label">Rune Hotkey (1-12)</span>
                 <input type="number" id="minibia-copilot-auto-attack-rune-hotkey" min="1" max="12" placeholder="4" />
               </label>
-              <div class="mc-small-note">El modo cuerpo a cuerpo utiliza la tecla de acceso rápido para seleccionar un objetivo y luego se coloca junto a él.</div>
+              <div class="mc-small-note">El modo cuerpo a cuerpo utiliza la tecla de acceso rÃ¡pido para seleccionar un objetivo y luego se coloca junto a Ã©l.</div>
             </div>
           </div>
 
@@ -2491,12 +2491,12 @@ function refreshAntiBotStatus() {
          </div>
 
           <div class="mc-small-note" id="minibia-copilot-antibot-hooks">
-            Detección: sin inicializar
+            DetecciÃ³n: sin inicializar
          </div>
 
          <div class="mc-small-note">
-            Detecta mensajes de comprobación AntiBot y genera
-            una alerta sonora y visual. La comprobación debe
+            Detecta mensajes de comprobaciÃ³n AntiBot y genera
+            una alerta sonora y visual. La comprobaciÃ³n debe
               resolverse manualmente.
             </div>
           </div>
@@ -2517,7 +2517,7 @@ function refreshAntiBotStatus() {
                 <button type="button" class="mc-small-button" id="minibia-copilot-cave-preset-new">Nueva Cave</button>
                 <button type="button" class="mc-small-button" id="minibia-copilot-cave-preset-delete">Eliminar</button>
               </div>
-              <div class="mc-field-label">Registrar punto de referencia en la ubicación actual</div>
+              <div class="mc-field-label">Registrar punto de referencia en la ubicaciÃ³n actual</div>
               <div class="mc-actions mc-actions-inline-two">
                 <button type="button" class="mc-small-button" id="minibia-copilot-cave-record">+ Nodo</button>
                 <button type="button" class="mc-small-button" id="minibia-copilot-cave-record-stand">+ Pararse</button>
@@ -2721,7 +2721,7 @@ function refreshAntiBotStatus() {
       const paused = typeof bot.isAllPaused === "function"
         ? bot.isAllPaused()
         : !!bot.cave?.isPaused?.();
-      cavePauseToggle.textContent = paused ? "▶" : "⏸";
+      cavePauseToggle.textContent = paused ? "â–¶" : "â¸";
       cavePauseToggle.dataset.paused = paused ? "true" : "false";
       cavePauseToggle.setAttribute("title", paused ? "Resume all bot actions" : "Pause all bot actions");
       cavePauseToggle.setAttribute("aria-label", paused ? "Resume all bot actions" : "Pause all bot actions");
@@ -3665,3 +3665,4 @@ function refreshAntiBotStatus() {
     },
   };
 };
+

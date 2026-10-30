@@ -1,4 +1,4 @@
-window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installAutoEatModule = function installAutoEatModule(bot) {
   const configStorageKey = "minibiaCopilot.eat.config";
@@ -54,7 +54,7 @@ window.__minibiaCopilotBundle.installAutoEatModule = function installAutoEatModu
   }
 
   function isSated() {
-    const player = window.gameClient?.player;
+    const player = window.__minibiaGameClient?.player;
     const conditions = player?.conditions;
 
     if (conditions?.has && conditions.SATED != null) {
@@ -201,3 +201,4 @@ window.__minibiaCopilotBundle.installAutoEatModule = function installAutoEatModu
     bot.rune.isSated = isSated;
   }
 };
+

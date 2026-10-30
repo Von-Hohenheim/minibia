@@ -1,4 +1,4 @@
-window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAttackModule(bot) {
   const configStorageKey = "minibiaCopilot.attack.config";
@@ -128,11 +128,11 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
   }
 
   function getCurrentTarget() {
-    return window.gameClient?.player?.__target || null;
+    return window.__minibiaGameClient?.player?.__target || null;
   }
 
   function getCurrentFollowTarget() {
-    return window.gameClient?.player?.__followTarget || null;
+    return window.__minibiaGameClient?.player?.__followTarget || null;
   }
 
   function pruneSkippedTargets(now = Date.now()) {
@@ -158,7 +158,7 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
   }
 
   function clearCurrentFollowTarget() {
-    if (!window.gameClient?.player || typeof window.gameClient.send !== "function") {
+    if (!window.__minibiaGameClient?.player || typeof window.__minibiaGameClient.send !== "function") {
       return false;
     }
 
@@ -170,13 +170,13 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
       return false;
     }
 
-    window.gameClient.player.setFollowTarget(null);
-    window.gameClient.send(new FollowPacket(0));
+    window.__minibiaGameClient.player.setFollowTarget(null);
+    window.__minibiaGameClient.send(new FollowPacket(0));
     return true;
   }
 
   function clearCurrentTarget() {
-    if (!window.gameClient?.player || typeof window.gameClient.send !== "function") {
+    if (!window.__minibiaGameClient?.player || typeof window.__minibiaGameClient.send !== "function") {
       return false;
     }
 
@@ -188,8 +188,8 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
       return false;
     }
 
-    window.gameClient.player.setTarget(null);
-    window.gameClient.send(new TargetPacket(0));
+    window.__minibiaGameClient.player.setTarget(null);
+    window.__minibiaGameClient.send(new TargetPacket(0));
     return true;
   }
 
@@ -247,7 +247,7 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
   }
 
   function setCurrentTarget(target) {
-    if (!target || !window.gameClient?.player || typeof window.gameClient.send !== "function") {
+    if (!target || !window.__minibiaGameClient?.player || typeof window.__minibiaGameClient.send !== "function") {
       return false;
     }
 
@@ -255,14 +255,14 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
       return false;
     }
 
-    window.gameClient.player.setTarget(target);
-    window.gameClient.send(new TargetPacket(target.id));
+    window.__minibiaGameClient.player.setTarget(target);
+    window.__minibiaGameClient.send(new TargetPacket(target.id));
     state.engagedTargetId = target.id;
     return true;
   }
 
   function setCurrentFollowTarget(target) {
-    if (!target || !window.gameClient?.player || typeof window.gameClient.send !== "function") {
+    if (!target || !window.__minibiaGameClient?.player || typeof window.__minibiaGameClient.send !== "function") {
       return false;
     }
 
@@ -274,8 +274,8 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
       return true;
     }
 
-    window.gameClient.player.setFollowTarget(target);
-    window.gameClient.send(new FollowPacket(target.id));
+    window.__minibiaGameClient.player.setFollowTarget(target);
+    window.__minibiaGameClient.send(new FollowPacket(target.id));
     return true;
   }
 
@@ -369,7 +369,7 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
       return null;
     }
 
-    return window.gameClient?.world?.getTileFromWorldPosition?.(
+    return window.__minibiaGameClient?.world?.getTileFromWorldPosition?.(
       new Position(position.x, position.y, position.z)
     ) || null;
   }
@@ -392,7 +392,7 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
       return da - db;
     });
 
-    const pathfinder = window.gameClient?.world?.pathfinder;
+    const pathfinder = window.__minibiaGameClient?.world?.pathfinder;
     const startTile = getTileFromPosition(playerPosition);
     if (!pathfinder || !startTile || typeof pathfinder.search !== "function") {
       return null;
@@ -800,4 +800,5 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
     config,
   };
 };
+
 

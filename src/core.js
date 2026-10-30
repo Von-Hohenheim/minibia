@@ -1,4 +1,31 @@
-window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+
+let cachedMinibiaGameClient = null;
+
+function getMinibiaGameClient() {
+  if (cachedMinibiaGameClient) {
+    return cachedMinibiaGameClient;
+  }
+
+  try {
+    const client = Function(
+      "return typeof vfdOywKJESRq !== 'undefined' ? vfdOywKJESRq : null"
+    )();
+
+    if (client) {
+      cachedMinibiaGameClient = client;
+    }
+
+    return client;
+  } catch (error) {
+    return null;
+  }
+}
+
+Object.defineProperty(window, "__minibiaGameClient", {
+  configurable: true,
+  get: getMinibiaGameClient
+});
 
 function getMinibiaGameClient() {
   try {
@@ -610,3 +637,5 @@ window.__minibiaCopilotBundle.createBot = function createBot() {
     },
   };
 };
+
+

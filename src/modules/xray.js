@@ -1,4 +1,4 @@
-window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot) {
   const configStorageKey = "minibiaCopilot.xray.config";
@@ -51,10 +51,10 @@ window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot
 
   function getTrackedCreatures() {
     const myState = bot.getPlayerState();
-    const myId = window.gameClient?.player?.id;
+    const myId = window.__minibiaGameClient?.player?.id;
     const myName = normalizeName(myState?.name);
 
-    return Object.values(window.gameClient?.world?.activeCreatures || {}).filter((creature) => {
+    return Object.values(window.__minibiaGameClient?.world?.activeCreatures || {}).filter((creature) => {
       if (!creature) return false;
       if (creature.id === myId) return false;
 
@@ -445,3 +445,4 @@ window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot
   }
   bot.addCleanup(stopOverlay);
 };
+
