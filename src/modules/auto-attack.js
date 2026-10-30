@@ -180,6 +180,7 @@ function getFollowPacketConstructor() {
   }
 
 
+
 function clearCurrentFollowTarget() {
   const client = window.__minibiaGameClient;
   const player = client?.player;
@@ -198,13 +199,6 @@ function clearCurrentFollowTarget() {
 
   return true;
 }
-
-
-    window.__minibiaGameClient.player.setFollowTarget(null);
-    window.__minibiaGameClient.send(new FollowPacket(0));
-    return true;
-  }
-
 
 function clearCurrentTarget() {
   const client = window.__minibiaGameClient;
@@ -226,6 +220,7 @@ function clearCurrentTarget() {
 
   return true;
 }
+
 
 
   function markCombatActive(now = Date.now()) {
@@ -308,24 +303,6 @@ function setCurrentFollowTarget(target) {
 }
 
 
-  function setCurrentFollowTarget(target) {
-    if (!target || !window.__minibiaGameClient?.player || typeof window.__minibiaGameClient.send !== "function") {
-      return false;
-    }
-
-    if (typeof FollowPacket !== "function") {
-      return false;
-    }
-
-    if (isSameCreature(getCurrentFollowTarget(), target)) {
-      return true;
-    }
-
-    window.__minibiaGameClient.player.setFollowTarget(target);
-    window.__minibiaGameClient.send(new FollowPacket(target.id));
-    return true;
-  }
-
   function skipTarget(target, reason, now = Date.now(), skipMs = 4000) {
     if (!target?.id) {
       return false;
@@ -397,6 +374,30 @@ function setCurrentFollowTarget(target) {
     }
 
     const engagedTarget = getEngagedTarget();
+    
+function setCurrentTarget(target) {
+  const client = window.__minibiaGameClient;
+  const player = client?.player;
+  const TargetPacket = getTargetPacketConstructor();
+
+  if (
+    !target ||
+    !player ||
+    typeof client.send !== "function" ||
+    !TargetPacket ||
+    !Number.isInteger(Number(target.id))
+  ) {
+    return false;
+  }
+
+  player.setTarget(target);
+  client.send(new TargetPacket(Number(target.id)));
+
+  state.engagedTargetId = target.id;
+
+  return true;
+}
+
     if (engagedTarget && shouldGiveUpTarget(engagedTarget)) {
       skipTarget(engagedTarget, "engaged target too far", Date.now(), 2500);
       bot.log("gave up distant auto attack target", {
@@ -876,6 +877,6 @@ function syncMeleeChase(now = Date.now()) {
     normalizeHotbarSlot,
     config,
   };
-
+};
 
  
