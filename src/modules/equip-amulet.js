@@ -1,4 +1,4 @@
-﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installEquipAmuletModule = function installEquipAmuletModule(bot) {
   const configStorageKey = "minibiaCopilot.equipAmulet.config";
@@ -31,18 +31,18 @@ window.__minibiaCopilotBundle.installEquipAmuletModule = function installEquipAm
   }
 
   function getEquipment() {
-    return window.__minibiaGameClient?.player?.equipment || null;
+    return window.gameClient?.player?.equipment || null;
   }
 
   function getOpenContainers() {
-    return Array.from(window.__minibiaGameClient?.player?.__openedContainers || []);
+    return Array.from(window.gameClient?.player?.__openedContainers || []);
   }
 
   function getItemDefinition(item) {
     if (!item) return null;
     return (
-      window.__minibiaGameClient?.itemDefinitionsBySid?.[item.sid] ||
-      window.__minibiaGameClient?.itemDefinitions?.[item.id] ||
+      window.gameClient?.itemDefinitionsBySid?.[item.sid] ||
+      window.gameClient?.itemDefinitions?.[item.id] ||
       null
     );
   }
@@ -174,7 +174,7 @@ window.__minibiaCopilotBundle.installEquipAmuletModule = function installEquipAm
       }
 
       const amuletCount = (typeof equippedAmulet.getCount === "function" ? equippedAmulet.getCount() : equippedAmulet.count) || 1;
-      window.__minibiaGameClient.send(new ItemMovePacket(
+      window.gameClient.send(new ItemMovePacket(
         { which: equipment, index: NECKLACE_SLOT },
         { which: emptyBackpackSlot.container, index: emptyBackpackSlot.slotIndex },
         amuletCount
@@ -191,7 +191,7 @@ window.__minibiaCopilotBundle.installEquipAmuletModule = function installEquipAm
     const source = findBestAmuletSource();
     if (!source) return false;
 
-    window.__minibiaGameClient.send(new ItemMovePacket(
+    window.gameClient.send(new ItemMovePacket(
       { which: source.container, index: source.slotIndex },
       { which: equipment, index: NECKLACE_SLOT },
       source.count || 1
@@ -321,4 +321,3 @@ window.__minibiaCopilotBundle.installEquipAmuletModule = function installEquipAm
     tryEquipAmulet,
   };
 };
-

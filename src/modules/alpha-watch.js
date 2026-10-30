@@ -1,4 +1,4 @@
-﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installAlphaWatchModule = function installAlphaWatchModule(bot) {
   const configStorageKey = "minibiaCopilot.alphaWatch.config";
@@ -44,7 +44,7 @@ window.__minibiaCopilotBundle.installAlphaWatchModule = function installAlphaWat
   function getVisibleAlphas() {
     const monsters = bot.xray?.getVisibleMonsters?.({ sameFloorOnly: true }) || [];
     const matcher = getMatcher();
-    const playerId = window.__minibiaGameClient?.player?.id;
+    const playerId = window.gameClient?.player?.id;
     return monsters.filter((creature) => {
       if (!creature || creature.masterId === playerId) return false;
       const name = String(creature.name || "").trim();
@@ -173,4 +173,3 @@ window.__minibiaCopilotBundle.installAlphaWatchModule = function installAlphaWat
     config,
   };
 };
-

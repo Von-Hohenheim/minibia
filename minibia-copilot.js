@@ -1,48 +1,4 @@
-﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
-
-let cachedMinibiaGameClient = null;
-
-function getMinibiaGameClient() {
-  if (cachedMinibiaGameClient) {
-    return cachedMinibiaGameClient;
-  }
-
-  try {
-    const client = Function(
-      "return typeof vfdOywKJESRq !== 'undefined' ? vfdOywKJESRq : null"
-    )();
-
-    if (client) {
-      cachedMinibiaGameClient = client;
-    }
-
-    return client;
-  } catch (error) {
-    return null;
-  }
-}
-
-Object.defineProperty(window, "__minibiaGameClient", {
-  configurable: true,
-  get: getMinibiaGameClient
-});
-
-function getMinibiaGameClient() {
-  try {
-    return Function(
-      "return typeof vfdOywKJESRq !== 'undefined' ? vfdOywKJESRq : null"
-    )();
-  } catch (error) {
-    console.error("[Minibia] Error recuperando GameClient:", error);
-    return null;
-  }
-}
-
-Object.defineProperty(window, "__minibiaGameClient", {
-  configurable: true,
-  get: getMinibiaGameClient
-});
-
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.createBot = function createBot() {
   const cleanups = [];
@@ -338,7 +294,7 @@ window.__minibiaCopilotBundle.createBot = function createBot() {
       }
     } catch (error) {}
     if (!notificationProto) {
-      const live = window.__minibiaGameClient?.interface?.notificationManager;
+      const live = window.gameClient?.interface?.notificationManager;
       if (live) notificationProto = Object.getPrototypeOf(live);
     }
 
@@ -349,7 +305,7 @@ window.__minibiaCopilotBundle.createBot = function createBot() {
       }
     } catch (error) {}
     if (!interfaceProto) {
-      const live = window.__minibiaGameClient?.interface;
+      const live = window.gameClient?.interface;
       if (live) interfaceProto = Object.getPrototypeOf(live);
     }
 
@@ -503,17 +459,17 @@ window.__minibiaCopilotBundle.createBot = function createBot() {
       },
     },
     getPlayerPosition() {
-      return window.__minibiaGameClient?.player?.getPosition?.() || null;
+      return window.gameClient?.player?.getPosition?.() || null;
     },
     getPlayerState() {
-      return window.__minibiaGameClient?.player?.state || null;
+      return window.gameClient?.player?.state || null;
     },
     getPlayerName() {
       return (
         String(
           this.getPlayerState()?.name ||
-          window.__minibiaGameClient?.player?.name ||
-          window.__minibiaGameClient?.player?.state?.name ||
+          window.gameClient?.player?.name ||
+          window.gameClient?.player?.state?.name ||
           ""
         ).trim() || null
       );
@@ -539,7 +495,7 @@ window.__minibiaCopilotBundle.createBot = function createBot() {
       };
     },
     sendChat(text) {
-      const channelManager = window.__minibiaGameClient?.interface?.channelManager;
+      const channelManager = window.gameClient?.interface?.channelManager;
       if (!channelManager || !text) {
         return false;
       }
@@ -556,7 +512,7 @@ window.__minibiaCopilotBundle.createBot = function createBot() {
       return tryClickReconnect();
     },
     clickHotbar(index) {
-      const button = window.__minibiaGameClient?.interface?.hotbarManager?.slots?.[index]?.canvas?.canvas;
+      const button = window.gameClient?.interface?.hotbarManager?.slots?.[index]?.canvas?.canvas;
       if (!button) {
         return false;
       }
@@ -637,15 +593,13 @@ window.__minibiaCopilotBundle.createBot = function createBot() {
     },
   };
 };
-
-
-﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installPzModule = function installPzModule(bot) {
   const homeStorageKey = "minibiaCopilot.pz.home";
 
   function getLoadedTiles() {
-    const chunks = window.__minibiaGameClient?.world?.chunks || [];
+    const chunks = window.gameClient?.world?.chunks || [];
     const tiles = [];
 
     for (const chunk of chunks) {
@@ -695,7 +649,7 @@ window.__minibiaCopilotBundle.installPzModule = function installPzModule(bot) {
     const to = new Position(p.x, p.y, p.z);
 
     try {
-      window.__minibiaGameClient?.world?.pathfinder?.findPath?.(from, to);
+      window.gameClient?.world?.pathfinder?.findPath?.(from, to);
       bot.log("pathing to", { x: p.x, y: p.y, z: p.z, flags: tile.flags });
       return true;
     } catch (error) {
@@ -834,8 +788,7 @@ window.__minibiaCopilotBundle.installPzModule = function installPzModule(bot) {
   bot.clearHomePz = clearHomePz;
   bot.goToHomePz = goToHomePz;
 };
-
-﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot) {
   const configStorageKey = "minibiaCopilot.xray.config";
@@ -888,10 +841,10 @@ window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot
 
   function getTrackedCreatures() {
     const myState = bot.getPlayerState();
-    const myId = window.__minibiaGameClient?.player?.id;
+    const myId = window.gameClient?.player?.id;
     const myName = normalizeName(myState?.name);
 
-    return Object.values(window.__minibiaGameClient?.world?.activeCreatures || {}).filter((creature) => {
+    return Object.values(window.gameClient?.world?.activeCreatures || {}).filter((creature) => {
       if (!creature) return false;
       if (creature.id === myId) return false;
 
@@ -1282,8 +1235,7 @@ window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot
   }
   bot.addCleanup(stopOverlay);
 };
-
-﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installPanicModule = function installPanicModule(bot) {
   const configStorageKey = "minibiaCopilot.panic.config";
@@ -1405,7 +1357,7 @@ window.__minibiaCopilotBundle.installPanicModule = function installPanicModule(b
   }
 
   function getRecentChannelMessages() {
-    return (window.__minibiaGameClient?.interface?.channelManager?.channels || []).flatMap((channel) =>
+    return (window.gameClient?.interface?.channelManager?.channels || []).flatMap((channel) =>
       (channel?.__contents || []).map((entry) => ({
         channelName: channel?.name || null,
         message: String(entry?.message || ""),
@@ -1883,8 +1835,7 @@ window.__minibiaCopilotBundle.installPanicModule = function installPanicModule(b
     config,
   };
 };
-
-﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot) {
   const configStorageKey = "minibiaCopilot.rune.config";
@@ -1959,7 +1910,7 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
   }
 
   function isSated() {
-    const player = window.__minibiaGameClient?.player;
+    const player = window.gameClient?.player;
     const conditions = player?.conditions;
 
     if (conditions?.has && conditions.SATED != null) {
@@ -1975,15 +1926,15 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
   }
 
   function getOpenContainers() {
-    return Array.from(window.__minibiaGameClient?.player?.__openedContainers || []);
+    return Array.from(window.gameClient?.player?.__openedContainers || []);
   }
 
   function getItemDefinition(item) {
     if (!item) return null;
 
     return (
-      window.__minibiaGameClient?.itemDefinitionsBySid?.[item.sid] ||
-      window.__minibiaGameClient?.itemDefinitions?.[item.id] ||
+      window.gameClient?.itemDefinitionsBySid?.[item.sid] ||
+      window.gameClient?.itemDefinitions?.[item.id] ||
       null
     );
   }
@@ -2032,7 +1983,7 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
   }
 
   function clickContainerUse() {
-    const menu = window.__minibiaGameClient?.interface?.menuManager?.menus?.["container-menu"];
+    const menu = window.gameClient?.interface?.menuManager?.menus?.["container-menu"];
     const root = menu?.element;
     if (!root) return false;
 
@@ -2246,7 +2197,6 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
   bot.startAutoEat = startAutoEat;
   bot.stopAutoEat = stopAutoEat;
 };
-
 window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot) {
@@ -2568,7 +2518,7 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
     config,
   };
 };
-﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installAutoInvisibleModule = function installAutoInvisibleModule(bot) {
   const configStorageKey = "minibiaCopilot.invisible.config";
@@ -2600,7 +2550,7 @@ window.__minibiaCopilotBundle.installAutoInvisibleModule = function installAutoI
   }
 
   function isInvisibleActive() {
-    const player = window.__minibiaGameClient?.player;
+    const player = window.gameClient?.player;
     const conditions = player?.conditions;
     const invisibleConditionId = getInvisibleConditionId();
 
@@ -2784,8 +2734,7 @@ window.__minibiaCopilotBundle.installAutoInvisibleModule = function installAutoI
     config,
   };
 };
-
-﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installAutoMagicShieldModule = function installAutoMagicShieldModule(bot) {
   const configStorageKey = "minibiaCopilot.magicShield.config";
@@ -2815,7 +2764,7 @@ window.__minibiaCopilotBundle.installAutoMagicShieldModule = function installAut
 
   function getMagicShieldConditionId() {
     const conditionManagerPrototype = window.ConditionManager?.prototype;
-    const playerConditions = window.__minibiaGameClient?.player?.conditions;
+    const playerConditions = window.gameClient?.player?.conditions;
     const candidateKeys = [
       "MAGIC_SHIELD",
       "MANA_SHIELD",
@@ -2835,7 +2784,7 @@ window.__minibiaCopilotBundle.installAutoMagicShieldModule = function installAut
   }
 
   function isMagicShieldActive(now = Date.now()) {
-    const player = window.__minibiaGameClient?.player;
+    const player = window.gameClient?.player;
     const conditions = player?.conditions;
     const magicShieldConditionId = getMagicShieldConditionId();
 
@@ -3023,8 +2972,7 @@ window.__minibiaCopilotBundle.installAutoMagicShieldModule = function installAut
     config,
   };
 };
-
-﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAttackModule(bot) {
   const configStorageKey = "minibiaCopilot.attack.config";
@@ -3154,11 +3102,11 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
   }
 
   function getCurrentTarget() {
-    return window.__minibiaGameClient?.player?.__target || null;
+    return window.gameClient?.player?.__target || null;
   }
 
   function getCurrentFollowTarget() {
-    return window.__minibiaGameClient?.player?.__followTarget || null;
+    return window.gameClient?.player?.__followTarget || null;
   }
 
   function pruneSkippedTargets(now = Date.now()) {
@@ -3184,7 +3132,7 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
   }
 
   function clearCurrentFollowTarget() {
-    if (!window.__minibiaGameClient?.player || typeof window.__minibiaGameClient.send !== "function") {
+    if (!window.gameClient?.player || typeof window.gameClient.send !== "function") {
       return false;
     }
 
@@ -3196,13 +3144,13 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
       return false;
     }
 
-    window.__minibiaGameClient.player.setFollowTarget(null);
-    window.__minibiaGameClient.send(new FollowPacket(0));
+    window.gameClient.player.setFollowTarget(null);
+    window.gameClient.send(new FollowPacket(0));
     return true;
   }
 
   function clearCurrentTarget() {
-    if (!window.__minibiaGameClient?.player || typeof window.__minibiaGameClient.send !== "function") {
+    if (!window.gameClient?.player || typeof window.gameClient.send !== "function") {
       return false;
     }
 
@@ -3214,8 +3162,8 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
       return false;
     }
 
-    window.__minibiaGameClient.player.setTarget(null);
-    window.__minibiaGameClient.send(new TargetPacket(0));
+    window.gameClient.player.setTarget(null);
+    window.gameClient.send(new TargetPacket(0));
     return true;
   }
 
@@ -3273,7 +3221,7 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
   }
 
   function setCurrentTarget(target) {
-    if (!target || !window.__minibiaGameClient?.player || typeof window.__minibiaGameClient.send !== "function") {
+    if (!target || !window.gameClient?.player || typeof window.gameClient.send !== "function") {
       return false;
     }
 
@@ -3281,14 +3229,14 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
       return false;
     }
 
-    window.__minibiaGameClient.player.setTarget(target);
-    window.__minibiaGameClient.send(new TargetPacket(target.id));
+    window.gameClient.player.setTarget(target);
+    window.gameClient.send(new TargetPacket(target.id));
     state.engagedTargetId = target.id;
     return true;
   }
 
   function setCurrentFollowTarget(target) {
-    if (!target || !window.__minibiaGameClient?.player || typeof window.__minibiaGameClient.send !== "function") {
+    if (!target || !window.gameClient?.player || typeof window.gameClient.send !== "function") {
       return false;
     }
 
@@ -3300,8 +3248,8 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
       return true;
     }
 
-    window.__minibiaGameClient.player.setFollowTarget(target);
-    window.__minibiaGameClient.send(new FollowPacket(target.id));
+    window.gameClient.player.setFollowTarget(target);
+    window.gameClient.send(new FollowPacket(target.id));
     return true;
   }
 
@@ -3395,7 +3343,7 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
       return null;
     }
 
-    return window.__minibiaGameClient?.world?.getTileFromWorldPosition?.(
+    return window.gameClient?.world?.getTileFromWorldPosition?.(
       new Position(position.x, position.y, position.z)
     ) || null;
   }
@@ -3418,7 +3366,7 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
       return da - db;
     });
 
-    const pathfinder = window.__minibiaGameClient?.world?.pathfinder;
+    const pathfinder = window.gameClient?.world?.pathfinder;
     const startTile = getTileFromPosition(playerPosition);
     if (!pathfinder || !startTile || typeof pathfinder.search !== "function") {
       return null;
@@ -3827,8 +3775,7 @@ window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAtta
   };
 };
 
-
-﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot) {
   const configStorageKey = "minibiaCopilot.cave.config";
@@ -4356,7 +4303,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
       return null;
     }
 
-    return window.__minibiaGameClient?.world?.getTileFromWorldPosition?.(
+    return window.gameClient?.world?.getTileFromWorldPosition?.(
       new Position(position.x, position.y, position.z)
     ) || null;
   }
@@ -4371,9 +4318,9 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
     }
 
     return (
-      window.__minibiaGameClient?.itemDefinitionsByCid?.[itemId] ||
-      window.__minibiaGameClient?.itemDefinitionsBySid?.[itemId] ||
-      window.__minibiaGameClient?.itemDefinitions?.[itemId] ||
+      window.gameClient?.itemDefinitionsByCid?.[itemId] ||
+      window.gameClient?.itemDefinitionsBySid?.[itemId] ||
+      window.gameClient?.itemDefinitions?.[itemId] ||
       null
     );
   }
@@ -4527,7 +4474,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
   }
 
   function getLoadedTiles() {
-    const chunks = window.__minibiaGameClient?.world?.chunks || [];
+    const chunks = window.gameClient?.world?.chunks || [];
     const tiles = [];
 
     for (const chunk of chunks) {
@@ -4585,7 +4532,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
   }
 
   function getMinimapCanvas() {
-    return window.__minibiaGameClient?.renderer?.minimap?.minimap?.canvas || document.getElementById("minimap") || null;
+    return window.gameClient?.renderer?.minimap?.minimap?.canvas || document.getElementById("minimap") || null;
   }
 
   function getMinimapViewport() {
@@ -4626,7 +4573,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
 
   function renderMinimapOverlay() {
     const viewport = getMinimapViewport();
-    const minimap = window.__minibiaGameClient?.renderer?.minimap;
+    const minimap = window.gameClient?.renderer?.minimap;
     const playerPosition = normalizePosition(bot.getPlayerPosition());
     const root = ensureMinimapOverlayRoot();
     const canvas = root.querySelector("canvas");
@@ -4891,7 +4838,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
     const to = new Position(waypoint.x, waypoint.y, waypoint.z);
 
     try {
-      window.__minibiaGameClient?.world?.pathfinder?.findPath?.(from, to);
+      window.gameClient?.world?.pathfinder?.findPath?.(from, to);
       state.lastPathAt = Date.now();
       bot.log("cave pathing to waypoint", {
         ...waypoint,
@@ -4990,11 +4937,11 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
   }
 
   function getEquipment() {
-    return window.__minibiaGameClient?.player?.equipment || null;
+    return window.gameClient?.player?.equipment || null;
   }
 
   function getOpenContainers() {
-    return Array.from(window.__minibiaGameClient?.player?.__openedContainers || []);
+    return Array.from(window.gameClient?.player?.__openedContainers || []);
   }
 
   function findAdjacentWalkablePosition(targetPosition, playerPosition) {
@@ -5021,7 +4968,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
         targetPosition.y + offset.y,
         targetPosition.z
       );
-      const tile = window.__minibiaGameClient?.world?.getTileFromWorldPosition?.(position);
+      const tile = window.gameClient?.world?.getTileFromWorldPosition?.(position);
       if (tile?.isWalkable?.()) {
         return normalizePosition(position);
       }
@@ -5090,7 +5037,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
       }
     }
 
-    window.__minibiaGameClient?.mouse?.__handleItemUseWith?.(
+    window.gameClient?.mouse?.__handleItemUseWith?.(
       { which: tool.which, index: tool.index },
       { which: targetTile, index: 0xFF }
     );
@@ -5150,7 +5097,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
     }
 
     if (isLadderTile(targetTile)) {
-      window.__minibiaGameClient?.mouse?.use?.({ which: targetTile, index: 0xFF });
+      window.gameClient?.mouse?.use?.({ which: targetTile, index: 0xFF });
       state.lastStairsUseAt = now;
       state.lastPathAt = now;
       markPendingTransitionSource(targetPosition);
@@ -5170,7 +5117,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
       return false;
     }
 
-    window.__minibiaGameClient?.mouse?.use?.({ which: currentTile, index: 0xFF });
+    window.gameClient?.mouse?.use?.({ which: currentTile, index: 0xFF });
     state.lastStairsUseAt = now;
     state.lastPathAt = now;
     markPendingTransitionSource(position);
@@ -5194,7 +5141,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
       return false;
     }
 
-    window.__minibiaGameClient?.mouse?.use?.({ which: targetTile, index: 0xFF });
+    window.gameClient?.mouse?.use?.({ which: targetTile, index: 0xFF });
     state.lastStairsUseAt = now;
     state.lastPathAt = now;
     markPendingTransitionSource(targetPosition);
@@ -5270,7 +5217,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
       { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }, { x: 1, y: 1 },
     ];
 
-    const pathfinder = window.__minibiaGameClient?.world?.pathfinder;
+    const pathfinder = window.gameClient?.world?.pathfinder;
     const startTile = getTileAt(playerPosition);
     if (!pathfinder || !startTile || typeof pathfinder.search !== "function") {
       const dx = Math.abs(pos.x - playerPosition.x);
@@ -5300,7 +5247,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
     if (!monsters.length) return 0;
 
     const pauseRange = Math.max(1, Number(config.monsterPauseRange) || 10);
-    const playerId = window.__minibiaGameClient?.player?.id;
+    const playerId = window.gameClient?.player?.id;
 
     let count = 0;
     for (const monster of monsters) {
@@ -5420,14 +5367,14 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
       const positionKey = getPositionKey(position);
       const now = Date.now();
 
-      // Update movement tracker every tick â€” needed for the combat-stall
+      // Update movement tracker every tick — needed for the combat-stall
       // failsafe below.
       if (positionKey && positionKey !== state.lastPositionKey) {
         state.lastPositionKey = positionKey;
         state.lastProgressAt = now;
       }
 
-      const playerHasTarget = !!window.__minibiaGameClient?.player?.__target;
+      const playerHasTarget = !!window.gameClient?.player?.__target;
       const attackStatus = bot.attack?.status?.() || null;
       const reachableMonsters = getReachableMonsterCount();
       const combatVisible =
@@ -5438,7 +5385,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
       // While ANY monster is on the battle list, cave stays parked so
       // auto-attack can engage them. BUT: if the player hasn't moved for
       // combatStallMs (default 5s), it means auto-attack is in a
-      // skip/re-target loop on something it can't reach â€” force-resume so
+      // skip/re-target loop on something it can't reach — force-resume so
       // the bot doesn't get permanently stuck. Combat that's actually
       // happening keeps moving the player (push from damage, diagonal
       // step, etc.) and resets lastProgressAt, so legitimate fights
@@ -5461,7 +5408,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
       }
 
       if (combatStalled) {
-        bot.log("cave failsafe â€” combat stuck " + Math.round(stalledForMs / 1000) + "s, resuming", {
+        bot.log("cave failsafe — combat stuck " + Math.round(stalledForMs / 1000) + "s, resuming", {
           reachableMonsters,
           stalledForMs,
         });
@@ -5492,7 +5439,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
           state.lastPathAt = 0;
         } else if (route.length > 1) {
           // Snap says "you're already on the closest waypoint" yet we
-          // haven't moved in idleSnapMs â€” the pathfinder can't reach the
+          // haven't moved in idleSnapMs — the pathfinder can't reach the
           // current waypoint (closed door, blocked tile, isolated alcove).
           // Force-advance past it so the route keeps going.
           bot.log("cave idle failsafe: force-advancing past unreachable waypoint", {
@@ -5589,7 +5536,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
 
     const now = Date.now();
     const waypointKey = "wp-" + state.currentIndex;
-    // Require the SAME waypoint to fail twice within 5s before reacting â€”
+    // Require the SAME waypoint to fail twice within 5s before reacting —
     // single "no way" can fire during normal walking when a tile briefly
     // changes state.
     if (state.lastNoWayWaypoint !== waypointKey || now - state.lastNoWayAt > 5000) {
@@ -5598,7 +5545,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
       return;
     }
     if (route.length > 1) {
-      bot.log("cave: 'no way' confirmed on waypoint â€” advancing", {
+      bot.log("cave: 'no way' confirmed on waypoint — advancing", {
         fromIndex: state.currentIndex + 1,
       });
       advanceWaypoint();
@@ -5931,8 +5878,7 @@ window.__minibiaCopilotBundle.installCaveModule = function installCaveModule(bot
     isAtWaypoint,
   };
 };
-
-﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installEquipRingModule = function installEquipRingModule(bot) {
   const configStorageKey = "minibiaCopilot.equipRing.config";
@@ -5973,19 +5919,19 @@ window.__minibiaCopilotBundle.installEquipRingModule = function installEquipRing
   }
 
   function getEquipment() {
-    return window.__minibiaGameClient?.player?.equipment || null;
+    return window.gameClient?.player?.equipment || null;
   }
 
   function getOpenContainers() {
-    return Array.from(window.__minibiaGameClient?.player?.__openedContainers || []);
+    return Array.from(window.gameClient?.player?.__openedContainers || []);
   }
 
   function getItemDefinition(item) {
     if (!item) return null;
 
     return (
-      window.__minibiaGameClient?.itemDefinitionsBySid?.[item.sid] ||
-      window.__minibiaGameClient?.itemDefinitions?.[item.id] ||
+      window.gameClient?.itemDefinitionsBySid?.[item.sid] ||
+      window.gameClient?.itemDefinitions?.[item.id] ||
       null
     );
   }
@@ -6125,7 +6071,7 @@ window.__minibiaCopilotBundle.installEquipRingModule = function installEquipRing
       }
 
       const ringCount = (typeof equippedRing.getCount === "function" ? equippedRing.getCount() : equippedRing.count) || 1;
-      window.__minibiaGameClient.send(new ItemMovePacket(
+      window.gameClient.send(new ItemMovePacket(
         { which: equipment, index: RING_SLOT },
         { which: emptyBackpackSlot.container, index: emptyBackpackSlot.slotIndex },
         ringCount
@@ -6142,7 +6088,7 @@ window.__minibiaCopilotBundle.installEquipRingModule = function installEquipRing
     const source = findBestRingSource();
     if (!source) return false;
 
-    window.__minibiaGameClient.send(new ItemMovePacket(
+    window.gameClient.send(new ItemMovePacket(
       { which: source.container, index: source.slotIndex },
       { which: equipment, index: RING_SLOT },
       source.count || 1
@@ -6292,8 +6238,7 @@ window.__minibiaCopilotBundle.installEquipRingModule = function installEquipRing
     tryEquipRing,
   };
 };
-
-﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installEquipAmuletModule = function installEquipAmuletModule(bot) {
   const configStorageKey = "minibiaCopilot.equipAmulet.config";
@@ -6326,18 +6271,18 @@ window.__minibiaCopilotBundle.installEquipAmuletModule = function installEquipAm
   }
 
   function getEquipment() {
-    return window.__minibiaGameClient?.player?.equipment || null;
+    return window.gameClient?.player?.equipment || null;
   }
 
   function getOpenContainers() {
-    return Array.from(window.__minibiaGameClient?.player?.__openedContainers || []);
+    return Array.from(window.gameClient?.player?.__openedContainers || []);
   }
 
   function getItemDefinition(item) {
     if (!item) return null;
     return (
-      window.__minibiaGameClient?.itemDefinitionsBySid?.[item.sid] ||
-      window.__minibiaGameClient?.itemDefinitions?.[item.id] ||
+      window.gameClient?.itemDefinitionsBySid?.[item.sid] ||
+      window.gameClient?.itemDefinitions?.[item.id] ||
       null
     );
   }
@@ -6469,7 +6414,7 @@ window.__minibiaCopilotBundle.installEquipAmuletModule = function installEquipAm
       }
 
       const amuletCount = (typeof equippedAmulet.getCount === "function" ? equippedAmulet.getCount() : equippedAmulet.count) || 1;
-      window.__minibiaGameClient.send(new ItemMovePacket(
+      window.gameClient.send(new ItemMovePacket(
         { which: equipment, index: NECKLACE_SLOT },
         { which: emptyBackpackSlot.container, index: emptyBackpackSlot.slotIndex },
         amuletCount
@@ -6486,7 +6431,7 @@ window.__minibiaCopilotBundle.installEquipAmuletModule = function installEquipAm
     const source = findBestAmuletSource();
     if (!source) return false;
 
-    window.__minibiaGameClient.send(new ItemMovePacket(
+    window.gameClient.send(new ItemMovePacket(
       { which: source.container, index: source.slotIndex },
       { which: equipment, index: NECKLACE_SLOT },
       source.count || 1
@@ -6616,8 +6561,7 @@ window.__minibiaCopilotBundle.installEquipAmuletModule = function installEquipAm
     tryEquipAmulet,
   };
 };
-
-﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installAutoEatModule = function installAutoEatModule(bot) {
   const configStorageKey = "minibiaCopilot.eat.config";
@@ -6673,7 +6617,7 @@ window.__minibiaCopilotBundle.installAutoEatModule = function installAutoEatModu
   }
 
   function isSated() {
-    const player = window.__minibiaGameClient?.player;
+    const player = window.gameClient?.player;
     const conditions = player?.conditions;
 
     if (conditions?.has && conditions.SATED != null) {
@@ -6820,8 +6764,7 @@ window.__minibiaCopilotBundle.installAutoEatModule = function installAutoEatModu
     bot.rune.isSated = isSated;
   }
 };
-
-﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installTalkModule = function installTalkModule(bot) {
   const configStorageKey = "minibiaCopilot.talk.config";
@@ -6903,7 +6846,7 @@ window.__minibiaCopilotBundle.installTalkModule = function installTalkModule(bot
 
   function getSelfNames() {
     return new Set(
-      ["you", bot.getPlayerName?.(), window.__minibiaGameClient?.player?.name, window.__minibiaGameClient?.player?.state?.name]
+      ["you", bot.getPlayerName?.(), window.gameClient?.player?.name, window.gameClient?.player?.state?.name]
         .map((name) => normalizeText(name))
         .filter(Boolean)
     );
@@ -6936,7 +6879,7 @@ window.__minibiaCopilotBundle.installTalkModule = function installTalkModule(bot
   }
 
   function getRawChatEntries() {
-    return (window.__minibiaGameClient?.interface?.channelManager?.channels || []).flatMap((channel) =>
+    return (window.gameClient?.interface?.channelManager?.channels || []).flatMap((channel) =>
       (channel?.__contents || []).map((entry, index) => ({
         channelName: channel?.name || null,
         entry,
@@ -7060,7 +7003,7 @@ window.__minibiaCopilotBundle.installTalkModule = function installTalkModule(bot
 
   function isSenderVisiblePlayer(message) {
     const me = bot.getPlayerPosition?.();
-    const myId = window.__minibiaGameClient?.player?.id;
+    const myId = window.gameClient?.player?.id;
     const senderName = normalizeText(message?.sender);
     const playerType = window.CONST?.TYPES?.PLAYER;
 
@@ -7068,7 +7011,7 @@ window.__minibiaCopilotBundle.installTalkModule = function installTalkModule(bot
       return false;
     }
 
-    return Object.values(window.__minibiaGameClient?.world?.activeCreatures || {}).some((creature) => {
+    return Object.values(window.gameClient?.world?.activeCreatures || {}).some((creature) => {
       if (!creature) {
         return false;
       }
@@ -7263,8 +7206,8 @@ window.__minibiaCopilotBundle.installTalkModule = function installTalkModule(bot
 
     const styled = trimmed
       .toLowerCase()
-      .replace(/[â€œâ€]/g, '"')
-      .replace(/[â€˜â€™]/g, "'")
+      .replace(/[“”]/g, '"')
+      .replace(/[‘’]/g, "'")
       .replace(/\bi am\b/g, "im")
       .replace(/\byou are\b/g, "youre")
       .replace(/\bdo not\b/g, "dont")
@@ -7493,8 +7436,7 @@ window.__minibiaCopilotBundle.installTalkModule = function installTalkModule(bot
     config,
   };
 };
-
-﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWallModule(bot) {
   const configStorageKey = "minibiaCopilot.magicWall.config";
@@ -7544,7 +7486,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
 
   function getItemName(item) {
     if (!item) return "";
-    const gc = window.__minibiaGameClient || {};
+    const gc = window.gameClient || {};
     const id = item.id;
     const candidates = [];
     if (id != null) {
@@ -7675,7 +7617,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
     try {
       if (typeof World !== "undefined" && World?.prototype) return World.prototype;
     } catch (error) {}
-    const world = window.__minibiaGameClient?.world;
+    const world = window.gameClient?.world;
     if (world) return Object.getPrototypeOf(world);
     return null;
   }
@@ -7684,7 +7626,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
     try {
       if (typeof Tile !== "undefined" && Tile?.prototype) return Tile.prototype;
     } catch (error) {}
-    const chunks = window.__minibiaGameClient?.world?.chunks || [];
+    const chunks = window.gameClient?.world?.chunks || [];
     for (const chunk of chunks) {
       const tiles = chunk?.tiles;
       if (Array.isArray(tiles)) {
@@ -7807,7 +7749,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
   }
 
   function getGameViewport() {
-    const canvas = window.__minibiaGameClient?.renderer?.screen?.canvas;
+    const canvas = window.gameClient?.renderer?.screen?.canvas;
     if (!(canvas instanceof HTMLCanvasElement)) return null;
     const rect = canvas.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return null;
@@ -7815,7 +7757,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
   }
 
   function getScalingVector() {
-    const scaling = window.__minibiaGameClient?.interface?.getSpriteScalingVector?.();
+    const scaling = window.gameClient?.interface?.getSpriteScalingVector?.();
     if (scaling && Number.isFinite(scaling.x) && Number.isFinite(scaling.y) && scaling.x > 0 && scaling.y > 0) {
       return { x: scaling.x, y: scaling.y };
     }
@@ -7823,7 +7765,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
   }
 
   function getPlayerMoveOffset() {
-    const offset = window.__minibiaGameClient?.player?.getMoveOffset?.();
+    const offset = window.gameClient?.player?.getMoveOffset?.();
     if (offset && Number.isFinite(offset.x) && Number.isFinite(offset.y)) {
       return { x: offset.x, y: offset.y };
     }
@@ -7842,7 +7784,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
     if (!(canvas instanceof HTMLCanvasElement)) return;
 
     const viewport = getGameViewport();
-    const playerPosition = window.__minibiaGameClient?.player?.getPosition?.();
+    const playerPosition = window.gameClient?.player?.getPosition?.();
 
     if (!viewport || !playerPosition || !state.timers.size) {
       if (canvas.width !== 0) {
@@ -8025,12 +7967,12 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
     const root = ensureOverlayRoot();
     const canvas = root.querySelector("canvas");
     const viewport = getGameViewport();
-    const playerPosition = window.__minibiaGameClient?.player?.getPosition?.();
+    const playerPosition = window.gameClient?.player?.getPosition?.();
     const diagnostic = {
       rootInDom: !!document.getElementById(overlayRootId),
       canvasInDom: !!canvas,
       viewportFound: !!viewport,
-      gameCanvasFound: !!window.__minibiaGameClient?.renderer?.screen?.canvas,
+      gameCanvasFound: !!window.gameClient?.renderer?.screen?.canvas,
       gameCanvasRect: viewport ? {
         left: viewport.rect.left,
         top: viewport.rect.top,
@@ -8089,7 +8031,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
   }
 
   function testTimer(durationSeconds = 20) {
-    const playerPosition = window.__minibiaGameClient?.player?.getPosition?.();
+    const playerPosition = window.gameClient?.player?.getPosition?.();
     if (!playerPosition) {
       bot.log("magic wall test: no player position");
       return false;
@@ -8141,8 +8083,7 @@ window.__minibiaCopilotBundle.installMagicWallModule = function installMagicWall
     config,
   };
 };
-
-﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installHuntModule = function installHuntModule(bot) {
   const configStorageKey = "minibiaCopilot.hunt.config";
@@ -8187,7 +8128,7 @@ window.__minibiaCopilotBundle.installHuntModule = function installHuntModule(bot
   }
 
   function getModalManager() {
-    return window.__minibiaGameClient?.interface?.modalManager || null;
+    return window.gameClient?.interface?.modalManager || null;
   }
 
   function installPatches() {
@@ -8397,8 +8338,7 @@ window.__minibiaCopilotBundle.installHuntModule = function installHuntModule(bot
     getLastInfo: () => state.lastInfo,
   };
 };
-
-﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installAntiBotModule = function installAntiBotModule(bot) {
   const configStorageKey = "minibiaCopilot.antiBot.config";
@@ -8435,7 +8375,7 @@ window.__minibiaCopilotBundle.installAntiBotModule = function installAntiBotModu
     bot.storage.set(configStorageKey, { ...config });
   }
 
-  // ---------- ExtracciÃ³n de texto ----------
+  // ---------- Extracción de texto ----------
   function extractText(value, depth = 0) {
     if (value == null || depth > 2) return "";
     if (typeof value === "string") return value;
@@ -8515,7 +8455,7 @@ window.__minibiaCopilotBundle.installAntiBotModule = function installAntiBotModu
     let on = false;
     titleTimer = window.setInterval(() => {
       on = !on;
-      document.title = on ? "âš  ANTI-BOT CHECK" : originalTitle;
+      document.title = on ? "⚠ ANTI-BOT CHECK" : originalTitle;
     }, 700);
   }
 
@@ -8546,8 +8486,8 @@ window.__minibiaCopilotBundle.installAntiBotModule = function installAntiBotModu
     }
 
     notice.textContent = seconds != null
-      ? `âš  ANTI-BOT RUNE CHECK en ${seconds}s â€” AtiÃ©ndelo manualmente`
-      : "âš  ANTI-BOT RUNE CHECK â€” AtiÃ©ndelo manualmente";
+      ? `⚠ ANTI-BOT RUNE CHECK en ${seconds}s — Atiéndelo manualmente`
+      : "⚠ ANTI-BOT RUNE CHECK — Atiéndelo manualmente";
 
     startTitleFlash();
     if (noticeTimer != null) window.clearTimeout(noticeTimer);
@@ -8563,7 +8503,7 @@ window.__minibiaCopilotBundle.installAntiBotModule = function installAntiBotModu
     stopTitleFlash();
   }
 
-  // ---------- LÃ³gica de detecciÃ³n ----------
+  // ---------- Lógica de detección ----------
   function handleText(text, source) {
     if (!state.running || !text) return false;
 
@@ -8577,13 +8517,13 @@ window.__minibiaCopilotBundle.installAntiBotModule = function installAntiBotModu
     if (!match) return false;
 
     const now = Date.now();
-    if (now - state.lastAlertAt < config.cooldownMs) return true; // misma alerta vista por otra vÃ­a
+    if (now - state.lastAlertAt < config.cooldownMs) return true; // misma alerta vista por otra vía
 
     state.lastAlertAt = now;
     state.lastSeconds = match[1] != null ? Number(match[1]) : null;
     state.lastSource = source;
 
-    console.warn("[AntiBot] Â¡ComprobaciÃ³n detectada!", { text, source });
+    console.warn("[AntiBot] ¡Comprobación detectada!", { text, source });
     raiseAlarm();
     showNotice(state.lastSeconds);
     return true;
@@ -8625,7 +8565,7 @@ window.__minibiaCopilotBundle.installAntiBotModule = function installAntiBotModu
   function removePacketHook() {
     if (!packetHook) return;
     const { proto, original, wrapper } = packetHook;
-    // Solo restauramos si nadie parcheÃ³ encima; si no, el wrapper queda inerte (running=false).
+    // Solo restauramos si nadie parcheó encima; si no, el wrapper queda inerte (running=false).
     if (proto.handleServerMessage === wrapper) {
       proto.handleServerMessage = original;
     }
@@ -8647,7 +8587,7 @@ window.__minibiaCopilotBundle.installAntiBotModule = function installAntiBotModu
 
   // ---------- Hook 3: sondeo del chat ----------
   function readChannelEntries() {
-    const channels = window.__minibiaGameClient?.interface?.channelManager?.channels || [];
+    const channels = window.gameClient?.interface?.channelManager?.channels || [];
     const out = [];
     for (const channel of channels) {
       for (const entry of channel?.__contents || []) {
@@ -8783,8 +8723,7 @@ window.__minibiaCopilotBundle.installAntiBotModule = function installAntiBotModu
   };
 
   if (config.enabled) start();
-};
-window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+};window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installTrackerModule = function installTrackerModule(bot) {
   const configStorageKey = "minibiaCopilot.tracker.config";
@@ -9674,7 +9613,7 @@ window.__minibiaCopilotBundle.installTrackerModule = function installTrackerModu
     config,
   };
 };
-﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installAlphaWatchModule = function installAlphaWatchModule(bot) {
   const configStorageKey = "minibiaCopilot.alphaWatch.config";
@@ -9720,7 +9659,7 @@ window.__minibiaCopilotBundle.installAlphaWatchModule = function installAlphaWat
   function getVisibleAlphas() {
     const monsters = bot.xray?.getVisibleMonsters?.({ sameFloorOnly: true }) || [];
     const matcher = getMatcher();
-    const playerId = window.__minibiaGameClient?.player?.id;
+    const playerId = window.gameClient?.player?.id;
     return monsters.filter((creature) => {
       if (!creature || creature.masterId === playerId) return false;
       const name = String(creature.name || "").trim();
@@ -9849,7 +9788,6 @@ window.__minibiaCopilotBundle.installAlphaWatchModule = function installAlphaWat
     config,
   };
 };
-
 window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installFightEstimatorModule = function installFightEstimatorModule(bot) {
@@ -10378,7 +10316,7 @@ window.__minibiaCopilotBundle.installFightEstimatorModule = function installFigh
     config,
   };
 };
-﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installLootbagModule = function installLootbagModule(bot) {
   const configStorageKey = "minibiaCopilot.lootbag.config";
@@ -10413,16 +10351,16 @@ window.__minibiaCopilotBundle.installLootbagModule = function installLootbagModu
   }
 
   function getEquipment() {
-    return window.__minibiaGameClient?.player?.equipment || null;
+    return window.gameClient?.player?.equipment || null;
   }
 
   function getOpenContainers() {
-    return Array.from(window.__minibiaGameClient?.player?.__openedContainers || []);
+    return Array.from(window.gameClient?.player?.__openedContainers || []);
   }
 
   function getItemDefinition(item) {
     if (!item) return null;
-    const gc = window.__minibiaGameClient;
+    const gc = window.gameClient;
     return (
       gc?.itemDefinitionsByCid?.[item.id] ||
       gc?.itemDefinitionsBySid?.[item.sid] ||
@@ -10451,12 +10389,12 @@ window.__minibiaCopilotBundle.installLootbagModule = function installLootbagModu
   }
 
   function getPlayerTile() {
-    const player = window.__minibiaGameClient?.player;
+    const player = window.gameClient?.player;
     if (!player) return null;
     const position = player.getPosition?.();
     if (!position) return null;
     if (typeof Position !== "function") return null;
-    const tile = window.__minibiaGameClient?.world?.getTileFromWorldPosition?.(
+    const tile = window.gameClient?.world?.getTileFromWorldPosition?.(
       new Position(position.x, position.y, position.z)
     );
     return tile || null;
@@ -10491,7 +10429,7 @@ window.__minibiaCopilotBundle.installLootbagModule = function installLootbagModu
     const to = { which: tile, index: 0xFF };
 
     try {
-      window.__minibiaGameClient.send(new ItemMovePacket(from, to, count));
+      window.gameClient.send(new ItemMovePacket(from, to, count));
     } catch (error) {
       bot.log("lootbag: drop failed", { name: getItemName(item), error: error?.message || error });
       return false;
@@ -10517,7 +10455,7 @@ window.__minibiaCopilotBundle.installLootbagModule = function installLootbagModu
       const now = Date.now();
       if (now - state.lastDropAt < Math.max(0, Number(config.dropCooldownMs) || 0)) return;
 
-      const player = window.__minibiaGameClient?.player;
+      const player = window.gameClient?.player;
       if (!player) return;
       if (player.isInProtectionZone?.()) return;
 
@@ -10671,8 +10609,7 @@ window.__minibiaCopilotBundle.installLootbagModule = function installLootbagModu
     config,
   };
 };
-
-﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
   const panelPositionKey = "minibiaCopilot.ui.panelPosition";
@@ -10751,7 +10688,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
       const floorLabel = status?.config?.selectedFloor == null
         ? "all floors"
         : `${formatFloorOffset(status.config.selectedFloor) ?? "?"}`;
-      overlayLabel.textContent = `${status?.config?.overlayEnabled ? "Overlay: on" : "Overlay: off"} â€¢ ${floorLabel}`;
+      overlayLabel.textContent = `${status?.config?.overlayEnabled ? "Overlay: on" : "Overlay: off"} • ${floorLabel}`;
     }
 
     if (floorSelect) {
@@ -10926,7 +10863,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
           Number.isFinite(status?.distanceToWaypoint) && status.distanceToWaypoint >= 0
             ? `, dist ${status.distanceToWaypoint}`
             : "";
-        const pausedTag = status.userPaused ? " â€” PAUSED" : "";
+        const pausedTag = status.userPaused ? " — PAUSED" : "";
         statusLabel.textContent = `Status: running (${waypointNumber}/${route.length}${distanceLabel})${pausedTag}`;
       } else {
         statusLabel.textContent = `Status: idle (${route.length} waypoint${route.length === 1 ? "" : "s"})`;
@@ -11089,15 +11026,15 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     if (hpEl) {
       const cur = snapshot?.health;
       const max = snapshot?.maxHealth;
-      hpEl.textContent = cur != null && max != null ? `${cur}/${max}` : (cur != null ? String(cur) : "â€”");
+      hpEl.textContent = cur != null && max != null ? `${cur}/${max}` : (cur != null ? String(cur) : "—");
     }
     if (manaEl) {
       const cur = snapshot?.mana;
       const max = snapshot?.maxMana;
-      manaEl.textContent = cur != null && max != null ? `${cur}/${max}` : (cur != null ? String(cur) : "â€”");
+      manaEl.textContent = cur != null && max != null ? `${cur}/${max}` : (cur != null ? String(cur) : "—");
     }
     if (levelEl) {
-      levelEl.textContent = snapshot?.level != null ? String(snapshot.level) : "â€”";
+      levelEl.textContent = snapshot?.level != null ? String(snapshot.level) : "—";
     }
   }
 
@@ -11107,7 +11044,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
   }
 
   function formatNumber(value) {
-    if (value == null || !Number.isFinite(Number(value))) return "â€”";
+    if (value == null || !Number.isFinite(Number(value))) return "—";
     const n = Number(value);
     if (Math.abs(n) >= 1000000) return (n / 1000000).toFixed(2) + "M";
     if (Math.abs(n) >= 1000) return (n / 1000).toFixed(1) + "k";
@@ -11165,7 +11102,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     if (topMonster) {
       const monsters = Array.isArray(info?.monsters) ? info.monsters.slice().sort((a, b) => (b.count || 0) - (a.count || 0)) : [];
       if (!monsters.length) {
-        topMonster.textContent = "Top kill: â€”";
+        topMonster.textContent = "Top kill: —";
       } else {
         const top3 = monsters.slice(0, 3).map((m) => `${m.name} ${formatNumber(m.count)}`).join(", ");
         topMonster.textContent = `Top kills: ${top3}`;
@@ -11175,7 +11112,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     if (topLoot) {
       const loot = Array.isArray(info?.loot) ? info.loot.slice().sort((a, b) => (b.count || 0) - (a.count || 0)) : [];
       if (!loot.length) {
-        topLoot.textContent = "Top loot: â€”";
+        topLoot.textContent = "Top loot: —";
       } else {
         const top3 = loot.slice(0, 3).map((l) => `${l.name} ${formatNumber(l.count)}`).join(", ");
         topLoot.textContent = `Top loot: ${top3}`;
@@ -11240,9 +11177,9 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     }
     if (statusLabel) {
       if (status.lastError) {
-        statusLabel.textContent = "Status: error â€” " + String(status.lastError).slice(0, 80);
+        statusLabel.textContent = "Status: error — " + String(status.lastError).slice(0, 80);
       } else if (status.pollInFlight) {
-        statusLabel.textContent = "Status: fetchingâ€¦";
+        statusLabel.textContent = "Status: fetching…";
       } else if (status.running) {
         const seen = status.onlineCount ? `${status.onlineCount} online site-wide` : "no online data yet";
         const lastAt = status.lastPollAt ? formatRelativeTime(status.lastPollAt) : "never";
@@ -11276,7 +11213,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
           const levelPart = player.level != null ? `lvl ${escapeHtml(player.level)}` : "";
           const vocationPart = player.vocation ? escapeHtml(player.vocation) : "";
           const metaParts = [levelPart, vocationPart].filter(Boolean);
-          const metaText = metaParts.length ? `<span class="mc-tracked-meta">${metaParts.join(" Â· ")}</span>` : "";
+          const metaText = metaParts.length ? `<span class="mc-tracked-meta">${metaParts.join(" · ")}</span>` : "";
           return (
             `<div class="mc-tracked-row" data-name="${escapeHtml(name)}">` +
               `<span class="mc-tracked-name">` +
@@ -11287,8 +11224,8 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
                 `</span>` +
               `</span>` +
               `<span class="mc-tracked-actions">` +
-                `<button type="button" class="mc-small-button" data-tracker-swap="${escapeHtml(name)}" title="Move to ${oppositeCategoryLabel}">â‡„</button>` +
-                `<button type="button" class="mc-small-button" data-tracker-remove="${escapeHtml(name)}" title="Remove">âœ•</button>` +
+                `<button type="button" class="mc-small-button" data-tracker-swap="${escapeHtml(name)}" title="Move to ${oppositeCategoryLabel}">⇄</button>` +
+                `<button type="button" class="mc-small-button" data-tracker-remove="${escapeHtml(name)}" title="Remove">✕</button>` +
               `</span>` +
             `</div>`
           );
@@ -11309,7 +11246,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
             `<div class="mc-death-row">` +
               `<div class="mc-death-head">` +
                 `<span>${escapeHtml(death.name)}${levelTag}</span>` +
-                `<span>${escapeHtml(time)} Â· ${escapeHtml(rel)}</span>` +
+                `<span>${escapeHtml(time)} · ${escapeHtml(rel)}</span>` +
               `</div>` +
               `<div class="mc-death-body">${escapeHtml(death.description || "")}</div>` +
             `</div>`
@@ -11334,7 +11271,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
   }
 
   function positionTrackerToastContainer(host) {
-    const canvas = window.__minibiaGameClient?.renderer?.screen?.canvas;
+    const canvas = window.gameClient?.renderer?.screen?.canvas;
     const rect = canvas?.getBoundingClientRect?.();
     if (rect && rect.width > 0 && rect.height > 0) {
       host.style.left = `${Math.round(rect.left + rect.width / 2)}px`;
@@ -11392,7 +11329,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
       <div class="mc-fight-dialog" role="dialog" aria-modal="true">
         <div class="mc-fight-head">
           <h3 class="mc-fight-title">Monster Matchup</h3>
-          <button type="button" id="minibia-copilot-fight-close" aria-label="Close">âœ•</button>
+          <button type="button" id="minibia-copilot-fight-close" aria-label="Close">✕</button>
         </div>
         <div class="mc-fight-pickers">
           <input type="text" id="minibia-copilot-fight-a" list="minibia-copilot-fight-datalist" placeholder="Monster A (e.g. Ferumbras)" autocomplete="off" />
@@ -11401,10 +11338,10 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
         </div>
         <datalist id="minibia-copilot-fight-datalist"></datalist>
         <div class="mc-fight-actions">
-          <button type="button" id="minibia-copilot-fight-go">âš” Fight!</button>
+          <button type="button" id="minibia-copilot-fight-go">⚔ Fight!</button>
           <button type="button" id="minibia-copilot-fight-refresh-lib">Reload Library</button>
         </div>
-        <div class="mc-fight-status" id="minibia-copilot-fight-status">Loading libraryâ€¦</div>
+        <div class="mc-fight-status" id="minibia-copilot-fight-status">Loading library…</div>
         <div class="mc-fight-result" id="minibia-copilot-fight-result" hidden></div>
       </div>
     `;
@@ -11465,7 +11402,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
 
   async function loadFightLibrary(force) {
     const statusEl = document.getElementById("minibia-copilot-fight-status");
-    if (statusEl) statusEl.textContent = force ? "Reloading libraryâ€¦" : "Loading libraryâ€¦";
+    if (statusEl) statusEl.textContent = force ? "Reloading library…" : "Loading library…";
     try {
       await bot.fightEstimator?.fetchLibrary?.({ force });
       const status = bot.fightEstimator?.status?.();
@@ -11489,13 +11426,13 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     }
 
     resultEl.hidden = false;
-    resultEl.innerHTML = '<div class="mc-fight-verdict">Simulatingâ€¦</div><div class="mc-fight-status">Checking Minibia library and Tibia wiki for missing monstersâ€¦</div>';
+    resultEl.innerHTML = '<div class="mc-fight-verdict">Simulating…</div><div class="mc-fight-status">Checking Minibia library and Tibia wiki for missing monsters…</div>';
 
     let outcome;
     try {
       outcome = await bot.fightEstimator?.simulateAsync?.(a, b);
     } catch (error) {
-      resultEl.innerHTML = `<div class="mc-fight-verdict">âš  ${escapeHtml(error?.message || String(error))}</div>`;
+      resultEl.innerHTML = `<div class="mc-fight-verdict">⚠ ${escapeHtml(error?.message || String(error))}</div>`;
       return;
     }
     if (!outcome) {
@@ -11503,15 +11440,15 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
       return;
     }
     if (outcome.error) {
-      resultEl.innerHTML = `<div class="mc-fight-verdict">âš  ${escapeHtml(outcome.error)}</div>`;
+      resultEl.innerHTML = `<div class="mc-fight-verdict">⚠ ${escapeHtml(outcome.error)}</div>`;
       return;
     }
 
     const verdict = outcome.winner === "a"
-      ? `ðŸ† ${escapeHtml(outcome.winnerName)} wins â€” confidence: ${escapeHtml(outcome.confidence)}`
+      ? `🏆 ${escapeHtml(outcome.winnerName)} wins — confidence: ${escapeHtml(outcome.confidence)}`
       : outcome.winner === "b"
-      ? `ðŸ† ${escapeHtml(outcome.winnerName)} wins â€” confidence: ${escapeHtml(outcome.confidence)}`
-      : "ðŸ¤ Draw";
+      ? `🏆 ${escapeHtml(outcome.winnerName)} wins — confidence: ${escapeHtml(outcome.confidence)}`
+      : "🤝 Draw";
     const winnerKey = outcome.winner;
 
     function renderCard(side, snap) {
@@ -11531,7 +11468,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
             <dt>Attacks</dt><dd>${escapeHtml(snap.attackCount)}</dd>
             <dt>Est. DPS</dt><dd>${escapeHtml(snap.dps)}</dd>
             <dt>Kills in</dt><dd>${escapeHtml(ttkText)}</dd>
-            <dt>Immune</dt><dd>${escapeHtml(snap.immunities.join(", ") || "â€”")}</dd>
+            <dt>Immune</dt><dd>${escapeHtml(snap.immunities.join(", ") || "—")}</dd>
             <dt>Exp</dt><dd>${escapeHtml(snap.experience)}</dd>
           </dl>
         </div>
@@ -11571,7 +11508,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
       } else if (!itemCount) {
         statusLabel.textContent = "Status: running but no items configured";
       } else if (status.droppedSinceStart) {
-        const last = status.lastDroppedName ? ` â€” last: ${status.lastDroppedName}` : "";
+        const last = status.lastDroppedName ? ` — last: ${status.lastDroppedName}` : "";
         statusLabel.textContent = `Status: dropped ${status.droppedSinceStart} this session${last}`;
       } else {
         statusLabel.textContent = `Status: watching (${itemCount} item${itemCount === 1 ? "" : "s"})`;
@@ -11586,7 +11523,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
         list.innerHTML = items.map((name) => (
           `<div class="mc-loot-row" data-name="${escapeHtml(name)}">` +
             `<span>${escapeHtml(name)}</span>` +
-            `<button type="button" class="mc-small-button" data-lootbag-remove="${escapeHtml(name)}" title="Remove">âœ•</button>` +
+            `<button type="button" class="mc-small-button" data-lootbag-remove="${escapeHtml(name)}" title="Remove">✕</button>` +
           `</div>`
         )).join("");
       }
@@ -11605,9 +11542,9 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
         `<div class="mc-priority-row" data-name="${escapeHtml(name)}">` +
           `<span class="mc-priority-rank">${index + 1}.</span>` +
           `<span class="mc-priority-name">${escapeHtml(name)}</span>` +
-          `<button type="button" class="mc-small-button" data-attack-priority-up="${escapeHtml(name)}" title="Move up">â†‘</button>` +
-          `<button type="button" class="mc-small-button" data-attack-priority-down="${escapeHtml(name)}" title="Move down">â†“</button>` +
-          `<button type="button" class="mc-small-button" data-attack-priority-remove="${escapeHtml(name)}" title="Remove">âœ•</button>` +
+          `<button type="button" class="mc-small-button" data-attack-priority-up="${escapeHtml(name)}" title="Move up">↑</button>` +
+          `<button type="button" class="mc-small-button" data-attack-priority-down="${escapeHtml(name)}" title="Move down">↓</button>` +
+          `<button type="button" class="mc-small-button" data-attack-priority-remove="${escapeHtml(name)}" title="Remove">✕</button>` +
         `</div>`
       )).join("");
     }
@@ -11630,10 +11567,10 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
       } else {
         const count = status.visibleAlphas?.length || 0;
         if (count === 0) {
-          statusLabel.textContent = "Status: watching â€” none on screen";
+          statusLabel.textContent = "Status: watching — none on screen";
         } else if (count === 1) {
           const a = status.visibleAlphas[0];
-          statusLabel.textContent = `Status: 1 nearby â€” ${a.name}`;
+          statusLabel.textContent = `Status: 1 nearby — ${a.name}`;
         } else {
           statusLabel.textContent = `Status: ${count} alphas nearby`;
         }
@@ -11659,10 +11596,10 @@ function refreshAntiBotStatus() {
   if (!status) {
     if (enabledInput) enabledInput.checked = false;
     if (statusLabel) statusLabel.textContent =
-      "Estado: mÃ³dulo no instalado";
+      "Estado: módulo no instalado";
 
     if (hooksLabel) hooksLabel.textContent =
-      "DetecciÃ³n: no disponible";
+      "Detección: no disponible";
 
     return;
   }
@@ -11851,7 +11788,7 @@ function refreshAntiBotStatus() {
     }
 
     if (toggle) {
-      toggle.textContent = nextCollapsed ? "+" : "âˆ’";
+      toggle.textContent = nextCollapsed ? "+" : "−";
       toggle.setAttribute("aria-label", nextCollapsed ? "Maximize panel" : "Minimize panel");
       toggle.setAttribute("title", nextCollapsed ? "Maximize" : "Minimize");
     }
@@ -12858,21 +12795,21 @@ function refreshAntiBotStatus() {
       <div class="mc-titlebar">
         <div class="mc-title">Minibia <span class="mc-title-accent">Heim</span></div>
         <div class="mc-titlebar-actions">
-          <button type="button" class="mc-icon-button" id="minibia-copilot-pause-toggle" aria-label="Pausa el Bot" title="Pause all bot actions">â¸</button>
-          <button type="button" class="mc-icon-button" id="minibia-copilot-reload" aria-label="Recargar bot" title="Reload bot">âŸ³</button>
-          <button type="button" class="mc-icon-button" id="minibia-copilot-collapse" aria-label="Minimizar panel" title="Minimize">âˆ’</button>
+          <button type="button" class="mc-icon-button" id="minibia-copilot-pause-toggle" aria-label="Pausa el Bot" title="Pause all bot actions">⏸</button>
+          <button type="button" class="mc-icon-button" id="minibia-copilot-reload" aria-label="Recargar bot" title="Reload bot">⟳</button>
+          <button type="button" class="mc-icon-button" id="minibia-copilot-collapse" aria-label="Minimizar panel" title="Minimize">−</button>
         </div>
       </div>
       <div class="mc-hero" id="minibia-copilot-hero">
         <img src="https://minibia.com/png/minibia-mascot.png" alt="Minibia" referrerpolicy="no-referrer" onerror="this.parentElement.hidden=true" />
       </div>
       <div class="mc-tabs" id="minibia-copilot-tabs">
-        <button type="button" class="mc-tab-button" data-tab="status"><span class="mc-tab-icon">âš¡</span><span>Status</span></button>
-        <button type="button" class="mc-tab-button" data-tab="combat"><span class="mc-tab-icon">âš”</span><span>Combat</span></button>
-        <button type="button" class="mc-tab-button" data-tab="survival"><span class="mc-tab-icon">â¤</span><span>Survival</span></button>
-        <button type="button" class="mc-tab-button" data-tab="utility"><span class="mc-tab-icon">âš™</span><span>Utility</span></button>
-        <button type="button" class="mc-tab-button" data-tab="navigation"><span class="mc-tab-icon">ðŸ—º</span><span>Navigate</span></button>
-        <button type="button" class="mc-tab-button" data-tab="safely"><span class="mc-tab-icon">âš™</span><span>Safely</span></button>
+        <button type="button" class="mc-tab-button" data-tab="status"><span class="mc-tab-icon">⚡</span><span>Status</span></button>
+        <button type="button" class="mc-tab-button" data-tab="combat"><span class="mc-tab-icon">⚔</span><span>Combat</span></button>
+        <button type="button" class="mc-tab-button" data-tab="survival"><span class="mc-tab-icon">❤</span><span>Survival</span></button>
+        <button type="button" class="mc-tab-button" data-tab="utility"><span class="mc-tab-icon">⚙</span><span>Utility</span></button>
+        <button type="button" class="mc-tab-button" data-tab="navigation"><span class="mc-tab-icon">🗺</span><span>Navigate</span></button>
+        <button type="button" class="mc-tab-button" data-tab="safely"><span class="mc-tab-icon">⚙</span><span>Safely</span></button>
       </div>
 
       <div class="mc-body">
@@ -12880,9 +12817,9 @@ function refreshAntiBotStatus() {
         <div class="mc-tab-pane" data-tab="status" hidden>
          
           <div class="mc-snapshot" id="minibia-copilot-snapshot">
-            <div class="mc-stat"><span class="mc-stat-label">HP</span><span class="mc-stat-value" data-tone="hp" id="minibia-copilot-snapshot-hp">â€”</span></div>
-            <div class="mc-stat"><span class="mc-stat-label">Mana</span><span class="mc-stat-value" data-tone="mana" id="minibia-copilot-snapshot-mana">â€”</span></div>
-            <div class="mc-stat"><span class="mc-stat-label">Lvl</span><span class="mc-stat-value" data-tone="lvl" id="minibia-copilot-snapshot-level">â€”</span></div>
+            <div class="mc-stat"><span class="mc-stat-label">HP</span><span class="mc-stat-value" data-tone="hp" id="minibia-copilot-snapshot-hp">—</span></div>
+            <div class="mc-stat"><span class="mc-stat-label">Mana</span><span class="mc-stat-value" data-tone="mana" id="minibia-copilot-snapshot-mana">—</span></div>
+            <div class="mc-stat"><span class="mc-stat-label">Lvl</span><span class="mc-stat-value" data-tone="lvl" id="minibia-copilot-snapshot-level">—</span></div>
           </div>
 
           <div class="mc-section">
@@ -12890,15 +12827,15 @@ function refreshAntiBotStatus() {
             <div class="mc-stack">
               <div class="mc-small-note" id="minibia-copilot-hunt-status">Status: nada pa</div>
               <div class="mc-hunt-grid" id="minibia-copilot-hunt-stats" hidden>
-                <div class="mc-hunt-cell"><span class="mc-field-label">Tiempo</span><span data-key="elapsed">â€”</span></div>
-                <div class="mc-hunt-cell"><span class="mc-field-label">XP / h</span><span data-key="xpPerHour">â€”</span></div>
-                <div class="mc-hunt-cell"><span class="mc-field-label">Gold / h</span><span data-key="goldPerHour">â€”</span></div>
-                <div class="mc-hunt-cell"><span class="mc-field-label">Kills / h</span><span data-key="killsPerHour">â€”</span></div>
-                <div class="mc-hunt-cell"><span class="mc-field-label">Total XP</span><span data-key="xp">â€”</span></div>
-                <div class="mc-hunt-cell"><span class="mc-field-label">Total Gold</span><span data-key="gold">â€”</span></div>
+                <div class="mc-hunt-cell"><span class="mc-field-label">Tiempo</span><span data-key="elapsed">—</span></div>
+                <div class="mc-hunt-cell"><span class="mc-field-label">XP / h</span><span data-key="xpPerHour">—</span></div>
+                <div class="mc-hunt-cell"><span class="mc-field-label">Gold / h</span><span data-key="goldPerHour">—</span></div>
+                <div class="mc-hunt-cell"><span class="mc-field-label">Kills / h</span><span data-key="killsPerHour">—</span></div>
+                <div class="mc-hunt-cell"><span class="mc-field-label">Total XP</span><span data-key="xp">—</span></div>
+                <div class="mc-hunt-cell"><span class="mc-field-label">Total Gold</span><span data-key="gold">—</span></div>
               </div>
-              <div class="mc-small-note" id="minibia-copilot-hunt-top-monster">Top kill: â€”</div>
-              <div class="mc-small-note" id="minibia-copilot-hunt-top-loot">Top loot: â€”</div>
+              <div class="mc-small-note" id="minibia-copilot-hunt-top-monster">Top kill: —</div>
+              <div class="mc-small-note" id="minibia-copilot-hunt-top-loot">Top loot: —</div>
               <label class="mc-toggle">
                 <input type="checkbox" id="minibia-copilot-hunt-autopoll" />
                 <span>Auto-refresh cada 10 segundos</span>
@@ -12954,7 +12891,7 @@ function refreshAntiBotStatus() {
                 <span class="mc-field-label">Rune Hotkey (1-12)</span>
                 <input type="number" id="minibia-copilot-auto-attack-rune-hotkey" min="1" max="12" placeholder="4" />
               </label>
-              <div class="mc-small-note">El modo cuerpo a cuerpo utiliza la tecla de acceso rÃ¡pido para seleccionar un objetivo y luego se coloca junto a Ã©l.</div>
+              <div class="mc-small-note">El modo cuerpo a cuerpo utiliza la tecla de acceso rápido para seleccionar un objetivo y luego se coloca junto a él.</div>
             </div>
           </div>
 
@@ -13165,12 +13102,12 @@ function refreshAntiBotStatus() {
          </div>
 
           <div class="mc-small-note" id="minibia-copilot-antibot-hooks">
-            DetecciÃ³n: sin inicializar
+            Detección: sin inicializar
          </div>
 
          <div class="mc-small-note">
-            Detecta mensajes de comprobaciÃ³n AntiBot y genera
-            una alerta sonora y visual. La comprobaciÃ³n debe
+            Detecta mensajes de comprobación AntiBot y genera
+            una alerta sonora y visual. La comprobación debe
               resolverse manualmente.
             </div>
           </div>
@@ -13191,7 +13128,7 @@ function refreshAntiBotStatus() {
                 <button type="button" class="mc-small-button" id="minibia-copilot-cave-preset-new">Nueva Cave</button>
                 <button type="button" class="mc-small-button" id="minibia-copilot-cave-preset-delete">Eliminar</button>
               </div>
-              <div class="mc-field-label">Registrar punto de referencia en la ubicaciÃ³n actual</div>
+              <div class="mc-field-label">Registrar punto de referencia en la ubicación actual</div>
               <div class="mc-actions mc-actions-inline-two">
                 <button type="button" class="mc-small-button" id="minibia-copilot-cave-record">+ Nodo</button>
                 <button type="button" class="mc-small-button" id="minibia-copilot-cave-record-stand">+ Pararse</button>
@@ -13395,7 +13332,7 @@ function refreshAntiBotStatus() {
       const paused = typeof bot.isAllPaused === "function"
         ? bot.isAllPaused()
         : !!bot.cave?.isPaused?.();
-      cavePauseToggle.textContent = paused ? "â–¶" : "â¸";
+      cavePauseToggle.textContent = paused ? "▶" : "⏸";
       cavePauseToggle.dataset.paused = paused ? "true" : "false";
       cavePauseToggle.setAttribute("title", paused ? "Resume all bot actions" : "Pause all bot actions");
       cavePauseToggle.setAttribute("aria-label", paused ? "Resume all bot actions" : "Pause all bot actions");
@@ -14339,7 +14276,6 @@ function refreshAntiBotStatus() {
     },
   };
 };
-
 (() => {
   const bundle = window.__minibiaCopilotBundle || window.__minibiaCopilotReloadBundle || {};
 

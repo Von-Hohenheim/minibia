@@ -1,4 +1,4 @@
-﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installHuntModule = function installHuntModule(bot) {
   const configStorageKey = "minibiaCopilot.hunt.config";
@@ -43,7 +43,7 @@ window.__minibiaCopilotBundle.installHuntModule = function installHuntModule(bot
   }
 
   function getModalManager() {
-    return window.__minibiaGameClient?.interface?.modalManager || null;
+    return window.gameClient?.interface?.modalManager || null;
   }
 
   function installPatches() {
@@ -253,4 +253,3 @@ window.__minibiaCopilotBundle.installHuntModule = function installHuntModule(bot
     getLastInfo: () => state.lastInfo,
   };
 };
-

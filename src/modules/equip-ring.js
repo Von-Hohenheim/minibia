@@ -1,4 +1,4 @@
-﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installEquipRingModule = function installEquipRingModule(bot) {
   const configStorageKey = "minibiaCopilot.equipRing.config";
@@ -39,19 +39,19 @@ window.__minibiaCopilotBundle.installEquipRingModule = function installEquipRing
   }
 
   function getEquipment() {
-    return window.__minibiaGameClient?.player?.equipment || null;
+    return window.gameClient?.player?.equipment || null;
   }
 
   function getOpenContainers() {
-    return Array.from(window.__minibiaGameClient?.player?.__openedContainers || []);
+    return Array.from(window.gameClient?.player?.__openedContainers || []);
   }
 
   function getItemDefinition(item) {
     if (!item) return null;
 
     return (
-      window.__minibiaGameClient?.itemDefinitionsBySid?.[item.sid] ||
-      window.__minibiaGameClient?.itemDefinitions?.[item.id] ||
+      window.gameClient?.itemDefinitionsBySid?.[item.sid] ||
+      window.gameClient?.itemDefinitions?.[item.id] ||
       null
     );
   }
@@ -191,7 +191,7 @@ window.__minibiaCopilotBundle.installEquipRingModule = function installEquipRing
       }
 
       const ringCount = (typeof equippedRing.getCount === "function" ? equippedRing.getCount() : equippedRing.count) || 1;
-      window.__minibiaGameClient.send(new ItemMovePacket(
+      window.gameClient.send(new ItemMovePacket(
         { which: equipment, index: RING_SLOT },
         { which: emptyBackpackSlot.container, index: emptyBackpackSlot.slotIndex },
         ringCount
@@ -208,7 +208,7 @@ window.__minibiaCopilotBundle.installEquipRingModule = function installEquipRing
     const source = findBestRingSource();
     if (!source) return false;
 
-    window.__minibiaGameClient.send(new ItemMovePacket(
+    window.gameClient.send(new ItemMovePacket(
       { which: source.container, index: source.slotIndex },
       { which: equipment, index: RING_SLOT },
       source.count || 1
@@ -358,4 +358,3 @@ window.__minibiaCopilotBundle.installEquipRingModule = function installEquipRing
     tryEquipRing,
   };
 };
-

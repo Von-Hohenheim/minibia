@@ -1,10 +1,10 @@
-﻿window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
+window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installPzModule = function installPzModule(bot) {
   const homeStorageKey = "minibiaCopilot.pz.home";
 
   function getLoadedTiles() {
-    const chunks = window.__minibiaGameClient?.world?.chunks || [];
+    const chunks = window.gameClient?.world?.chunks || [];
     const tiles = [];
 
     for (const chunk of chunks) {
@@ -54,7 +54,7 @@ window.__minibiaCopilotBundle.installPzModule = function installPzModule(bot) {
     const to = new Position(p.x, p.y, p.z);
 
     try {
-      window.__minibiaGameClient?.world?.pathfinder?.findPath?.(from, to);
+      window.gameClient?.world?.pathfinder?.findPath?.(from, to);
       bot.log("pathing to", { x: p.x, y: p.y, z: p.z, flags: tile.flags });
       return true;
     } catch (error) {
@@ -193,4 +193,3 @@ window.__minibiaCopilotBundle.installPzModule = function installPzModule(bot) {
   bot.clearHomePz = clearHomePz;
   bot.goToHomePz = goToHomePz;
 };
-
