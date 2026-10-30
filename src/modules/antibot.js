@@ -3,7 +3,7 @@ window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 window.__minibiaCopilotBundle.installAntiBotModule = function installAntiBotModule(bot) {
   const configStorageKey = "minibiaCopilot.antiBot.config";
   const noticeId = "minibia-antibot-notice";
-  const checkRe = /anti-?bot rune check(?:\s+in\s+(\d+)\s+seconds?)?/i;
+  const checkRe = /(?:anti-?bot\s+rune\s+check|anti-?bot\s+verification\s+will\s+appear)(?:\s+in\s+(\d+)\s+seconds?)?/i;
   const passedRe = /verification passed/i;
 
   const config = Object.assign(
