@@ -637,44 +637,52 @@ function syncMeleeChase(now = Date.now()) {
     return getNearbyMonsters().length > 0;
   }
 
-  function triggerAttack(now = Date.now()) {
-    if (!canAttack(now)) {
-      return false;
-    }
 
-    const engagedTarget = getEngagedTarget();
-    const preferredTarget = engagedTarget && !isTargetSkipped(engagedTarget, now)
+function triggerAttack(now = Date.now()) {
+  if (!canAttack(now)) {
+    return false;
+  }
+
+  const engagedTarget = getEngagedTarget();
+
+  const preferredTarget =
+    engagedTarget && !isTargetSkipped(engagedTarget, now)
       ? engagedTarget
       : (getMonsterCandidates(now)[0] || null);
-    if (preferredTarget && setCurrentTarget(preferredTarget)) {
-      state.lastTargetHotkeyAt = now;
-      markCombatActive(now);
-      bot.log("selected auto attack target", {
+
+  if (preferredTarget) {
+    const selected = setCurrentTarget(preferredTarget);
+
+    if (!selected) {
+      bot.log("failed to select auto attack target", {
         id: preferredTarget.id,
         name: preferredTarget.name || "Mob",
-        reason: isSameCreature(preferredTarget, engagedTarget) ? "engaged target" : "nearest candidate",
       });
-      return true;
-    }
-
-    if (config.meleeMode) {
       return false;
     }
 
     const slot = normalizeHotbarSlot(config.targetHotbarSlot);
-    const clicked = bot.clickHotbar(slot - 1);
-    if (clicked) {
-      const monsters = getNearbyMonsters();
-      state.lastTargetHotkeyAt = now;
-      markCombatActive(now);
-      bot.log("used auto attack target hotkey", {
-        slot,
-        nearbyMonsters: monsters.map((creature) => creature.name || "Mob"),
-      });
-    }
 
-    return clicked;
+    const clicked = slot
+      ? bot.clickHotbar(slot - 1)
+      : false;
+
+    state.lastTargetHotkeyAt = now;
+    markCombatActive(now);
+
+    bot.log("auto attack target selected", {
+      id: preferredTarget.id,
+      name: preferredTarget.name || "Mob",
+      slot,
+      clicked,
+    });
+
+    return true;
   }
+
+  return false;
+}
+
 
   function canUseRune(now = Date.now()) {
     const slot = normalizeHotbarSlot(config.runeHotbarSlot);
