@@ -27,6 +27,23 @@ Object.defineProperty(window, "__minibiaGameClient", {
   get: getMinibiaGameClient
 });
 
+function getMinibiaGameClient() {
+  try {
+    return Function(
+      "return typeof vfdOywKJESRq !== 'undefined' ? vfdOywKJESRq : null"
+    )();
+  } catch (error) {
+    console.error("[Minibia] Error recuperando GameClient:", error);
+    return null;
+  }
+}
+
+Object.defineProperty(window, "__minibiaGameClient", {
+  configurable: true,
+  get: getMinibiaGameClient
+});
+
+
 window.__minibiaCopilotBundle.createBot = function createBot() {
   const cleanups = [];
   const defaultAlarmAudioSrc = "https://upload.wikimedia.org/wikipedia/commons/transcoded/3/3f/ACA_Allertor_125_video.ogv/ACA_Allertor_125_video.ogv.480p.vp9.webm";
