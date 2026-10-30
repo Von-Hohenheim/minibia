@@ -1,600 +1,507 @@
-window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
-window.__minibiaCopilotBundle.installPanicModule = function installPanicModule(bot) {
-  const configStorageKey = "minibiaCopilot.panic.config";
-  const state = {
-    running: false,
-    timerId: null,
-    lastHealth: null,
-    lastTriggerAt: 0,
-    lastDamageEventKey: null,
-    pendingReturnOrigin: null,
-    pendingReturnModules: null,
-    returnNotBeforeAt: 0,
-    lastThreatAt: 0,
-    lastReturnAttemptAt: 0,
-  };
+window.__minibiaCopilotBundle =
+  window.__minibiaCopilotBundle || {};
 
-  const config = Object.assign(
-    {
-      tickMs: 200,
-      triggerCooldownMs: 4000,
-      returnToOriginEnabled: false,
-      returnDelayMs: 300000,
-      returnDelayJitterMs: 30000,
-      returnRetryCooldownMs: 2000,
-      unknownPlayerEnabled: false,
-      healthLossEnabled: false,
-      trustedNames: [],
-      gameMasterNames: [],
-    },
-    bot.storage.get(configStorageKey, {})
-  );
-
-  function persistConfig() {
-    bot.storage.set(configStorageKey, { ...config });
-  }
-
-  function normalizeName(name) {
-    return String(name || "").trim().toLowerCase();
-  }
-
-  function normalizeDelayMs(value, fallback = 0) {
-    const next = Math.trunc(Number(value));
-    return Number.isFinite(next) ? Math.max(0, next) : fallback;
-  }
-
-  function normalizePosition(position) {
-    const x = Number(position?.x);
-    const y = Number(position?.y);
-    const z = Number(position?.z);
-    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) {
-      return null;
-    }
-
-    return { x, y, z };
-  }
-
-  function isSamePosition(left, right) {
-    return !!left && !!right && left.x === right.x && left.y === right.y && left.z === right.z;
-  }
-
-  function getTrustedNames() {
-    return Array.from(
-      new Set(
-        (config.trustedNames || [])
-          .map((name) => normalizeName(name))
-          .filter(Boolean)
-      )
-    );
-  }
-
-  function getGameMasterNames() {
-    return Array.from(
-      new Set(
-        (config.gameMasterNames || [])
-          .map((name) => normalizeName(name))
-          .filter(Boolean)
-      )
-    );
-  }
-
-  function getVisiblePlayers() {
-    const me = bot.getPlayerPosition();
-    const players = bot.xray?.getVisiblePlayers?.() || [];
-    if (!me) {
-      return players;
-    }
-
-    return players.filter((creature) => {
-      const z = Number(creature?.__position?.z);
-      return Number.isFinite(z) && Math.abs(z - me.z) <= 1;
-    });
-  }
-
-  function getUnknownVisiblePlayers() {
-    const trusted = new Set(getTrustedNames());
-
-    return getVisiblePlayers().filter((creature) => {
-      const name = normalizeName(creature?.name);
-      return !!name && !trusted.has(name);
-    });
-  }
-
-  function getTrustedVisiblePlayers() {
-    const trusted = new Set(getTrustedNames());
-
-    return getVisiblePlayers().filter((creature) => {
-      const name = normalizeName(creature?.name);
-      return !!name && trusted.has(name);
-    });
-  }
-
-  function getVisibleGameMasters() {
-    const gameMasters = new Set(getGameMasterNames());
-
-    return getVisiblePlayers().filter((creature) => {
-      const name = normalizeName(creature?.name);
-      return !!name && gameMasters.has(name);
-    });
-  }
-
-  function getRecentChannelMessages() {
-    return (window.gameClient?.interface?.channelManager?.channels || []).flatMap((channel) =>
-      (channel?.__contents || []).map((entry) => ({
-        channelName: channel?.name || null,
-        message: String(entry?.message || ""),
-        time: entry?.__time || null,
-      }))
-    );
-  }
-
-  function parseDamageMessage(entry) {
-    const match = entry.message.match(
-      /^You lose\s+(\d+)\s+hitpoints\s+due to an attack by\s+(.+?)\.$/i
-    );
-
-    if (!match) {
-      return null;
-    }
-
-    return {
-      amount: Number(match[1]),
-      attackerName: match[2].trim(),
-      time: entry.time,
-      channelName: entry.channelName,
-      key: `${entry.time || "no-time"}|${entry.message}`,
-      message: entry.message,
+window.__minibiaCopilotBundle.installRuntimeInspectorModule =
+  function installRuntimeInspectorModule(bot) {
+    const state = {
+      installed: true,
+      installedAt: new Date().toISOString(),
+      client: null,
+      lastRefresh: null,
     };
-  }
 
-  function getLatestDamageEvent() {
-    const messages = getRecentChannelMessages()
-      .map(parseDamageMessage)
-      .filter(Boolean)
-      .sort((a, b) => {
-        const aTime = a.time ? Date.parse(a.time) : 0;
-        const bTime = b.time ? Date.parse(b.time) : 0;
-        return bTime - aTime;
-      });
+    const GLOBAL_CLIENT_NAMES = [
+      "gameClient",
+      "__minibiaGameClient",
+      "minibiaGameClient",
+    ];
 
-    return messages[0] || null;
-  }
-
-  function getReturnDelayMs() {
-    const baseDelayMs = normalizeDelayMs(config.returnDelayMs, 0);
-    const jitterMs = normalizeDelayMs(config.returnDelayJitterMs, 0);
-    if (!jitterMs) {
-      return baseDelayMs;
+    function log(...args) {
+      console.log("[Minibia Runtime Inspector]", ...args);
     }
 
-    const randomOffset = Math.floor(Math.random() * ((jitterMs * 2) + 1)) - jitterMs;
-    return Math.max(0, baseDelayMs + randomOffset);
-  }
-
-  function clearPendingReturn() {
-    state.pendingReturnOrigin = null;
-    state.pendingReturnModules = null;
-    state.returnNotBeforeAt = 0;
-    state.lastThreatAt = 0;
-    state.lastReturnAttemptAt = 0;
-  }
-
-  function snapshotInterruptedModules() {
-    return {
-      caveRunning: !!bot.cave?.status?.().running,
-      equipRingRunning: !!bot.equipRing?.status?.().running,
-    };
-  }
-
-  function armPendingReturn(now = Date.now(), origin = normalizePosition(bot.getPlayerPosition())) {
-    if (!config.returnToOriginEnabled) {
-      clearPendingReturn();
-      return;
-    }
-
-    if (!state.pendingReturnOrigin && origin) {
-      state.pendingReturnOrigin = origin;
-      state.pendingReturnModules = snapshotInterruptedModules();
-    }
-
-    if (!state.pendingReturnOrigin) {
-      return;
-    }
-
-    state.lastThreatAt = now;
-    state.returnNotBeforeAt = now + getReturnDelayMs();
-  }
-
-  function isReturnCoastClear() {
-    return !getVisibleGameMasters().length && !getUnknownVisiblePlayers().length;
-  }
-
-  function restoreInterruptedModules() {
-    if (state.pendingReturnModules?.caveRunning) {
-      bot.cave?.start?.();
-    }
-
-    if (state.pendingReturnModules?.equipRingRunning) {
-      bot.equipRing?.start?.();
-      bot.ui?.refreshEquipRingStatus?.();
-    }
-  }
-
-  function tryReturnToOrigin(now = Date.now()) {
-    if (!config.returnToOriginEnabled || !state.pendingReturnOrigin || !state.returnNotBeforeAt) {
-      return false;
-    }
-
-    if (now < state.returnNotBeforeAt) {
-      return false;
-    }
-
-    if (!isReturnCoastClear()) {
-      return false;
-    }
-
-    if (now - state.lastReturnAttemptAt < normalizeDelayMs(config.returnRetryCooldownMs, 2000)) {
-      return false;
-    }
-
-    const currentPosition = normalizePosition(bot.getPlayerPosition());
-    if (isSamePosition(currentPosition, state.pendingReturnOrigin)) {
-      bot.log("panic return completed", {
-        origin: state.pendingReturnOrigin,
-        threatAgeMs: now - state.lastThreatAt,
-      });
-      restoreInterruptedModules();
-      clearPendingReturn();
-      return true;
-    }
-
-    state.lastReturnAttemptAt = now;
-    const moved =
-      !!bot.cave?.goToPosition?.(state.pendingReturnOrigin) ||
-      !!bot.pz?.goToTile?.({ __position: state.pendingReturnOrigin });
-
-    if (moved) {
-      bot.log("panic returning to origin", {
-        origin: state.pendingReturnOrigin,
-        threatAgeMs: now - state.lastThreatAt,
-      });
-      return true;
-    }
-
-    bot.log("panic return pathing failed", { origin: state.pendingReturnOrigin });
-    return false;
-  }
-
-  function triggerPanic(reason, details = {}) {
-    const now = Date.now();
-    armPendingReturn(now);
-
-    if (now - state.lastTriggerAt < config.triggerCooldownMs) {
-      return false;
-    }
-
-    state.lastTriggerAt = now;
-    bot.playAlarm?.();
-    bot.log("panic triggered", { reason, ...details });
-
-    if (bot.cave?.stop) {
-      bot.cave.stop({ persistEnabled: false });
-    }
-
-    if (bot.equipRing?.stop) {
-      bot.equipRing.stop({ persistEnabled: false });
-      bot.ui?.refreshEquipRingStatus?.();
-    }
-
-    return !!bot.pz?.goToHomePz?.();
-  }
-
-  function triggerGameMasterKillSwitch(players) {
-    const detectedPlayers = (players || []).map((player) => player?.name).filter(Boolean);
-
-    bot.playAlarm?.();
-    bot.log("game master kill switch triggered", { players: detectedPlayers });
-
-    if (bot.rune?.stop) {
-      bot.rune.stop();
-    }
-
-    if (bot.eat?.stop) {
-      bot.eat.stop();
-    }
-
-    if (bot.invisible?.stop) {
-      bot.invisible.stop();
-    }
-
-    if (bot.magicShield?.stop) {
-      bot.magicShield.stop();
-    }
-
-    if (bot.cave?.stop) {
-      bot.cave.stop();
-    }
-
-    if (bot.attack?.stop) {
-      bot.attack.stop();
-    }
-
-    if (bot.equipRing?.stop) {
-      bot.equipRing.stop();
-    }
-
-    clearPendingReturn();
-    config.unknownPlayerEnabled = false;
-    config.healthLossEnabled = false;
-    persistConfig();
-    stop();
-
-    bot.ui?.refreshPanicStatus?.();
-    bot.ui?.refreshRuneStatus?.();
-    bot.ui?.refreshAutoEatStatus?.();
-    bot.ui?.refreshAutoInvisibleStatus?.();
-    bot.ui?.refreshAutoMagicShieldStatus?.();
-    bot.ui?.refreshAutoAttackStatus?.();
-    bot.ui?.refreshCaveStatus?.();
-    bot.ui?.refreshEquipRingStatus?.();
-    return true;
-  }
-
-  function checkGameMasters() {
-    if (!getGameMasterNames().length) {
-      return false;
-    }
-
-    const visibleGameMasters = getVisibleGameMasters();
-    if (!visibleGameMasters.length) {
-      return false;
-    }
-
-    return triggerGameMasterKillSwitch(visibleGameMasters);
-  }
-
-  function checkUnknownPlayers() {
-    if (!config.unknownPlayerEnabled) {
-      return false;
-    }
-
-    const unknownPlayers = getUnknownVisiblePlayers();
-    if (!unknownPlayers.length) {
-      return false;
-    }
-
-    return triggerPanic("unknown-player", {
-      players: unknownPlayers.map((player) => player.name),
-    });
-  }
-
-  function checkHealthLoss() {
-    if (!config.healthLossEnabled) {
-      return false;
-    }
-
-    const playerState = bot.getPlayerState();
-    const currentHealth = Number(playerState?.health ?? 0);
-
-    if (state.lastHealth == null) {
-      state.lastHealth = currentHealth;
-      return false;
-    }
-
-    const lostHealth = currentHealth < state.lastHealth;
-    state.lastHealth = currentHealth;
-
-    if (!lostHealth) {
-      return false;
-    }
-
-    const latestDamageEvent = getLatestDamageEvent();
-    if (latestDamageEvent && latestDamageEvent.key !== state.lastDamageEventKey) {
-      state.lastDamageEventKey = latestDamageEvent.key;
-
-      const trustedNames = new Set(getTrustedNames());
-      const attackerName = normalizeName(latestDamageEvent.attackerName);
-
-      if (attackerName && trustedNames.has(attackerName)) {
-        bot.log("ignored health-loss panic because attacker is trusted", {
-          attacker: latestDamageEvent.attackerName,
-          amount: latestDamageEvent.amount,
-          currentHealth,
-        });
-        return false;
-      }
-
-      return triggerPanic("health-loss", {
-        currentHealth,
-        attacker: latestDamageEvent.attackerName,
-        amount: latestDamageEvent.amount,
-      });
-    }
-
-    const unknownPlayers = getUnknownVisiblePlayers();
-    if (!unknownPlayers.length) {
-      const trustedPlayers = getTrustedVisiblePlayers();
-      if (trustedPlayers.length) {
-        bot.log("ignored health-loss panic because only trusted players are nearby", {
-          players: trustedPlayers.map((player) => player.name),
-          currentHealth,
-        });
-        return false;
+    function safeGlobalRead(name) {
+      try {
+        return window[name];
+      } catch (error) {
+        return undefined;
       }
     }
 
-    return triggerPanic("health-loss", { currentHealth });
-  }
+    function refresh() {
+      let foundClient = null;
+      let foundName = null;
 
-  function scheduleNextTick() {
-    if (!state.running) return;
+      for (const name of GLOBAL_CLIENT_NAMES) {
+        const candidate = safeGlobalRead(name);
 
-    state.timerId = window.setTimeout(() => {
-      tick();
-    }, config.tickMs);
-  }
-
-  function tick() {
-    if (!state.running) return;
-
-    try {
-      const triggered = checkGameMasters() || checkUnknownPlayers() || checkHealthLoss();
-      if (!triggered) {
-        tryReturnToOrigin();
+        if (
+          candidate !== null &&
+          (typeof candidate === "object" ||
+            typeof candidate === "function")
+        ) {
+          foundClient = candidate;
+          foundName = name;
+          break;
+        }
       }
-    } finally {
-      scheduleNextTick();
-    }
-  }
 
-  function shouldRun() {
-    return !!(getGameMasterNames().length || config.unknownPlayerEnabled || config.healthLossEnabled);
-  }
+      state.client = foundClient;
+      state.clientSource = foundName;
+      state.lastRefresh = new Date().toISOString();
 
-  function start() {
-    if (state.running) {
-      return false;
+      return {
+        found: Boolean(foundClient),
+        source: foundName,
+        type: foundClient ? typeof foundClient : null,
+      };
     }
 
-    state.running = true;
-    state.lastHealth = Number(bot.getPlayerState()?.health ?? 0);
-    state.lastDamageEventKey = getLatestDamageEvent()?.key || null;
-    bot.log("panic runner started", { ...config });
-    tick();
-    return true;
-  }
+    function getClient() {
+      if (!state.client) {
+        refresh();
+      }
 
-  function stop() {
-    if (!state.running && state.timerId == null) {
-      state.lastHealth = null;
-      return false;
+      return state.client;
     }
 
-    state.running = false;
+    function getDescriptor(object, property) {
+      let current = object;
+      let depth = 0;
 
-    if (state.timerId != null) {
-      window.clearTimeout(state.timerId);
-      state.timerId = null;
-    }
+      while (current && depth < 10) {
+        try {
+          const descriptor = Object.getOwnPropertyDescriptor(
+            current,
+            property
+          );
 
-    state.lastHealth = null;
-    state.lastDamageEventKey = null;
-    clearPendingReturn();
-    bot.log("panic runner stopped");
-    return true;
-  }
-
-  function syncRunningState() {
-    if (shouldRun()) {
-      start();
-    } else {
-      stop();
-    }
-  }
-
-  function updateConfig(nextConfig = {}) {
-    const next = { ...nextConfig };
-
-    if (Array.isArray(next.trustedNames)) {
-      next.trustedNames = next.trustedNames
-        .map((name) => String(name || "").trim())
-        .filter(Boolean);
-    }
-
-    if (Array.isArray(next.gameMasterNames)) {
-      next.gameMasterNames = next.gameMasterNames
-        .map((name) => String(name || "").trim())
-        .filter(Boolean);
-    }
-
-    if ("triggerCooldownMs" in next) {
-      next.triggerCooldownMs = normalizeDelayMs(next.triggerCooldownMs, config.triggerCooldownMs);
-    }
-
-    if ("returnDelayMs" in next) {
-      next.returnDelayMs = normalizeDelayMs(next.returnDelayMs, config.returnDelayMs);
-    }
-
-    if ("returnDelayJitterMs" in next) {
-      next.returnDelayJitterMs = normalizeDelayMs(next.returnDelayJitterMs, config.returnDelayJitterMs);
-    }
-
-    if ("returnRetryCooldownMs" in next) {
-      next.returnRetryCooldownMs = normalizeDelayMs(
-        next.returnRetryCooldownMs,
-        config.returnRetryCooldownMs
-      );
-    }
-
-    Object.assign(config, next);
-    if (!config.returnToOriginEnabled) {
-      clearPendingReturn();
-    }
-    persistConfig();
-    syncRunningState();
-    bot.log("panic runner config updated", { ...config });
-    return { ...config };
-  }
-
-  function status() {
-    return {
-      running: state.running,
-      config: {
-        ...config,
-        trustedNames: [...config.trustedNames],
-        gameMasterNames: [...config.gameMasterNames],
-      },
-      visiblePlayers: getVisiblePlayers().map((player) => ({
-        id: player.id,
-        name: player.name,
-        position: player.__position || null,
-      })),
-      unknownVisiblePlayers: getUnknownVisiblePlayers().map((player) => ({
-        id: player.id,
-        name: player.name,
-        position: player.__position || null,
-      })),
-      trustedVisiblePlayers: getTrustedVisiblePlayers().map((player) => ({
-        id: player.id,
-        name: player.name,
-        position: player.__position || null,
-      })),
-      visibleGameMasters: getVisibleGameMasters().map((player) => ({
-        id: player.id,
-        name: player.name,
-        position: player.__position || null,
-      })),
-      latestDamageEvent: getLatestDamageEvent(),
-      lastTriggerAt: state.lastTriggerAt,
-      pendingReturn: state.pendingReturnOrigin
-        ? {
-            origin: { ...state.pendingReturnOrigin },
-            modules: state.pendingReturnModules ? { ...state.pendingReturnModules } : null,
-            returnNotBeforeAt: state.returnNotBeforeAt,
-            lastThreatAt: state.lastThreatAt,
-            lastReturnAttemptAt: state.lastReturnAttemptAt,
-            coastClear: isReturnCoastClear(),
+          if (descriptor) {
+            return {
+              descriptor,
+              owner: current,
+              inherited: depth > 0,
+            };
           }
-        : null,
+
+          current = Object.getPrototypeOf(current);
+          depth++;
+        } catch (error) {
+          return {
+            error: String(error),
+          };
+        }
+      }
+
+      return null;
+    }
+
+    function describe(value) {
+      if (value === null) {
+        return { type: "null", value: null };
+      }
+
+      const type = typeof value;
+
+      if (
+        type === "string" ||
+        type === "number" ||
+        type === "boolean" ||
+        type === "undefined"
+      ) {
+        return {
+          type,
+          value,
+        };
+      }
+
+      if (type === "function") {
+        return {
+          type: "function",
+          name: value.name || "(anonymous)",
+          length: value.length,
+        };
+      }
+
+      let prototypeName = null;
+
+      try {
+        const prototype = Object.getPrototypeOf(value);
+        const constructorDescriptor = prototype
+          ? Object.getOwnPropertyDescriptor(
+              prototype,
+              "constructor"
+            )
+          : null;
+
+        if (
+          constructorDescriptor &&
+          typeof constructorDescriptor.value === "function"
+        ) {
+          prototypeName =
+            constructorDescriptor.value.name || null;
+        }
+      } catch (error) {
+        // La descripción continúa sin el nombre del prototipo.
+      }
+
+      let keys = [];
+
+      try {
+        keys = Object.keys(value);
+      } catch (error) {
+        keys = [];
+      }
+
+      return {
+        type: Array.isArray(value) ? "array" : "object",
+        constructor: prototypeName,
+        keyCount: keys.length,
+        keys: keys.slice(0, 80),
+      };
+    }
+
+    function getPathSegments(path) {
+      if (Array.isArray(path)) {
+        return path.map(String);
+      }
+
+      return String(path)
+        .replace(/\[(\d+)\]/g, ".$1")
+        .split(".")
+        .filter(Boolean);
+    }
+
+    function inspect(path) {
+      const client = getClient();
+
+      if (!client) {
+        return {
+          found: false,
+          error: "No se encontró una referencia global al GameClient.",
+          availableGlobals: GLOBAL_CLIENT_NAMES.map((name) => ({
+            name,
+            available: safeGlobalRead(name) != null,
+          })),
+        };
+      }
+
+      const segments = getPathSegments(path);
+
+      if (segments[0] === "client") {
+        segments.shift();
+      }
+
+      let current = client;
+      const traversed = [];
+
+      for (const segment of segments) {
+        if (
+          current === null ||
+          (typeof current !== "object" &&
+            typeof current !== "function")
+        ) {
+          return {
+            found: false,
+            path,
+            traversed,
+            error: "El valor intermedio no es un objeto.",
+          };
+        }
+
+        const result = getDescriptor(current, segment);
+
+        if (!result || !result.descriptor) {
+          return {
+            found: false,
+            path,
+            traversed,
+            missingProperty: segment,
+          };
+        }
+
+        if (result.error) {
+          return {
+            found: false,
+            path,
+            traversed,
+            error: result.error,
+          };
+        }
+
+        const descriptor = result.descriptor;
+
+        traversed.push({
+          property: segment,
+          inherited: result.inherited,
+          kind: Object.prototype.hasOwnProperty.call(
+            descriptor,
+            "value"
+          )
+            ? "value"
+            : "accessor",
+        });
+
+        // No ejecutamos getters ni métodos.
+        if (!Object.prototype.hasOwnProperty.call(
+          descriptor,
+          "value"
+        )) {
+          return {
+            found: true,
+            path,
+            traversed,
+            accessor: true,
+            getterAvailable: typeof descriptor.get === "function",
+            setterAvailable: typeof descriptor.set === "function",
+            note: "No se ejecutó el getter por seguridad.",
+          };
+        }
+
+        current = descriptor.value;
+      }
+
+      return {
+        found: true,
+        path,
+        traversed,
+        result: describe(current),
+        value: current,
+      };
+    }
+
+    function snapshot() {
+      const client = getClient();
+
+      if (!client) {
+        const result = {
+          found: false,
+          message:
+            "No se encontró GameClient en las referencias globales conocidas.",
+          globals: GLOBAL_CLIENT_NAMES.map((name) => ({
+            name,
+            available: safeGlobalRead(name) != null,
+          })),
+        };
+
+        log("Snapshot:", result);
+        return result;
+      }
+
+      const result = {
+        found: true,
+        source: state.clientSource,
+        capturedAt: new Date().toISOString(),
+        client: describe(client),
+        properties: {},
+      };
+
+      let keys = [];
+
+      try {
+        keys = Object.getOwnPropertyNames(client);
+      } catch (error) {
+        result.error = String(error);
+      }
+
+      for (const key of keys.slice(0, 100)) {
+        const descriptor = getDescriptor(client, key);
+
+        if (!descriptor || !descriptor.descriptor) {
+          result.properties[key] = {
+            type: "unavailable",
+          };
+          continue;
+        }
+
+        const propertyDescriptor = descriptor.descriptor;
+
+        if (
+          !Object.prototype.hasOwnProperty.call(
+            propertyDescriptor,
+            "value"
+          )
+        ) {
+          result.properties[key] = {
+            type: "accessor",
+            getter: typeof propertyDescriptor.get === "function",
+            setter: typeof propertyDescriptor.set === "function",
+            inherited: descriptor.inherited,
+          };
+          continue;
+        }
+
+        result.properties[key] = {
+          ...describe(propertyDescriptor.value),
+          inherited: descriptor.inherited,
+        };
+      }
+
+      log("Snapshot del GameClient:", result);
+      return result;
+    }
+
+    function find(term, options = {}) {
+      const client = getClient();
+
+      if (!client) {
+        return {
+          found: false,
+          error: "GameClient no disponible.",
+          matches: [],
+        };
+      }
+
+      const searchTerm = String(term).toLowerCase();
+      const maxDepth = Math.min(
+        Number(options.maxDepth) || 3,
+        5
+      );
+      const maxResults = Math.min(
+        Number(options.maxResults) || 100,
+        300
+      );
+
+      const matches = [];
+      const visited = new WeakSet();
+
+      function walk(object, path, depth) {
+        if (
+          !object ||
+          (typeof object !== "object" &&
+            typeof object !== "function") ||
+          depth > maxDepth ||
+          matches.length >= maxResults
+        ) {
+          return;
+        }
+
+        if (visited.has(object)) {
+          return;
+        }
+
+        visited.add(object);
+
+        let keys = [];
+
+        try {
+          keys = Object.getOwnPropertyNames(object);
+        } catch (error) {
+          return;
+        }
+
+        for (const key of keys) {
+          if (matches.length >= maxResults) {
+            return;
+          }
+
+          const currentPath = path
+            ? `${path}.${key}`
+            : key;
+
+          if (key.toLowerCase().includes(searchTerm)) {
+            matches.push({
+              path: currentPath,
+              property: key,
+            });
+          }
+
+          const descriptor = Object.getOwnPropertyDescriptor(
+            object,
+            key
+          );
+
+          // No ejecutamos getters ni métodos.
+          if (
+            descriptor &&
+            Object.prototype.hasOwnProperty.call(
+              descriptor,
+              "value"
+            )
+          ) {
+            walk(
+              descriptor.value,
+              currentPath,
+              depth + 1
+            );
+          }
+        }
+      }
+
+      walk(client, "client", 0);
+
+      log(`Búsqueda "${term}":`, matches);
+
+      return {
+        term,
+        count: matches.length,
+        matches,
+        truncated: matches.length >= maxResults,
+      };
+    }
+
+    function status() {
+      return {
+        installed: state.installed,
+        installedAt: state.installedAt,
+        clientAvailable: Boolean(getClient()),
+        clientSource: state.clientSource || null,
+        lastRefresh: state.lastRefresh,
+        capabilities: [
+          "snapshot",
+          "inspect",
+          "find",
+          "refresh",
+          "getClient",
+          "status",
+        ],
+        restrictions: [
+          "No ejecuta getters.",
+          "No invoca métodos del juego.",
+          "No modifica propiedades.",
+          "No envía paquetes ni simula entradas.",
+        ],
+      };
+    }
+
+    const api = {
+      snapshot,
+      inspect,
+      find,
+      status,
+      refresh,
+      getClient,
     };
-  }
 
-  if (shouldRun()) {
-    start();
-  }
+    refresh();
 
-  bot.panic = {
-    start,
-    stop,
-    status,
-    updateConfig,
-    getVisiblePlayers,
-    getUnknownVisiblePlayers,
-    getTrustedVisiblePlayers,
-    getVisibleGameMasters,
-    getTrustedNames,
-    getGameMasterNames,
-    config,
+    bot.runtimeInspector = api;
+
+    const previousInspector = window.__minibiaRuntimeInspector;
+
+    window.__minibiaRuntimeInspector = api;
+
+    if (typeof bot.addCleanup === "function") {
+      bot.addCleanup(() => {
+        state.installed = false;
+
+        if (bot.runtimeInspector === api) {
+          delete bot.runtimeInspector;
+        }
+
+        if (window.__minibiaRuntimeInspector === api) {
+          if (previousInspector === undefined) {
+            delete window.__minibiaRuntimeInspector;
+          } else {
+            window.__minibiaRuntimeInspector =
+              previousInspector;
+          }
+        }
+      });
+    }
+
+    log("Módulo instalado.", status());
+
+    return api;
   };
-};

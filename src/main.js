@@ -96,7 +96,9 @@
     restorePersistedEnabledSnapshot(previousEnabledSnapshot);
 
     const bot = currentBundle.createBot();
-
+if (typeof currentBundle.installRuntimeInspectorModule === "function") {
+  currentBundle.installRuntimeInspectorModule(bot);
+}
     currentBundle.installPzModule(bot);
     currentBundle.installXrayModule(bot);
     currentBundle.installPanicModule(bot);
