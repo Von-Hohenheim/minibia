@@ -360,21 +360,50 @@ function setCurrentFollowTarget(target) {
     return getTileDistance(playerPosition, targetPosition) > maxTargetDistance;
   }
 
-  function resetTargetIfTooFar() {
-    const currentTarget = getCurrentTarget();
-    if (currentTarget && shouldGiveUpTarget(currentTarget)) {
-      skipTarget(currentTarget, "target too far", Date.now(), 2500);
-      bot.log("gave up distant auto attack target", {
-        id: currentTarget.id,
-        name: currentTarget.name || "Mob",
-        position: normalizePosition(currentTarget.getPosition?.() || currentTarget.__position),
-        maxTargetDistance: Math.max(1, Number(config.maxTargetDistance) || 5),
-      });
-      return true;
-    }
+ function resetTargetIfTooFar() {
+  const currentTarget = getCurrentTarget();
 
-    const engagedTarget = getEngagedTarget();
-    
+  if (currentTarget && shouldGiveUpTarget(currentTarget)) {
+    skipTarget(currentTarget, "target too far", Date.now(), 2500);
+
+    bot.log("gave up distant auto attack target", {
+      id: currentTarget.id,
+      name: currentTarget.name || "Mob",
+      position: normalizePosition(
+        currentTarget.getPosition?.() || currentTarget.__position
+      ),
+      maxTargetDistance: Math.max(
+        1,
+        Number(config.maxTargetDistance) || 5
+      ),
+    });
+
+    return true;
+  }
+
+  const engagedTarget = getEngagedTarget();
+
+  if (engagedTarget && shouldGiveUpTarget(engagedTarget)) {
+    skipTarget(engagedTarget, "engaged target too far", Date.now(), 2500);
+
+    bot.log("gave up distant auto attack target", {
+      id: engagedTarget.id,
+      name: engagedTarget.name || "Mob",
+      position: normalizePosition(
+        engagedTarget.getPosition?.() || engagedTarget.__position
+      ),
+      maxTargetDistance: Math.max(
+        1,
+        Number(config.maxTargetDistance) || 5
+      ),
+    });
+
+    return true;
+  }
+
+  return false;
+}
+
 function setCurrentTarget(target) {
   const client = window.__minibiaGameClient;
   const player = client?.player;
@@ -397,20 +426,6 @@ function setCurrentTarget(target) {
 
   return true;
 }
-
-    if (engagedTarget && shouldGiveUpTarget(engagedTarget)) {
-      skipTarget(engagedTarget, "engaged target too far", Date.now(), 2500);
-      bot.log("gave up distant auto attack target", {
-        id: engagedTarget.id,
-        name: engagedTarget.name || "Mob",
-        position: normalizePosition(engagedTarget.getPosition?.() || engagedTarget.__position),
-        maxTargetDistance: Math.max(1, Number(config.maxTargetDistance) || 5),
-      });
-      return true;
-    }
-
-    return false;
-  }
 
   function getTileFromPosition(position) {
     if (!position || typeof Position !== "function") {
