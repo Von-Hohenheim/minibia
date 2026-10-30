@@ -1,7 +1,7 @@
 window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAttackModule(bot) {
-  const configStorageKey = "minibiaBot.attack.config";
+  const configStorageKey = "minibiaCopilot.attack.config";
   const state = {
     running: false,
     timerId: null,

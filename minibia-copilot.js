@@ -2975,7 +2975,7 @@ window.__minibiaCopilotBundle.installAutoMagicShieldModule = function installAut
 window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installAutoAttackModule = function installAutoAttackModule(bot) {
-  const configStorageKey = "minibiaBot.attack.config";
+  const configStorageKey = "minibiaCopilot.attack.config";
   const state = {
     running: false,
     timerId: null,
@@ -12874,12 +12874,12 @@ function refreshAntiBotStatus() {
              <div class="mc-stack">
 
               <label class="mc-toggle">
-                <input type="checkbox" id="minibia-bot-auto-attack-enabled" />
+                <input type="checkbox" id="minibia-copilot-auto-attack-enabled" />
                 <span>Enable Auto Attack</span>
               </label>
 
               <label class="mc-toggle">
-                <input type="checkbox" id="minibia-bot-auto-attack-melee" />
+                <input type="checkbox" id="minibia-copilot-auto-attack-melee" />
                 <span>Melee Mode</span>
               </label>
 
@@ -12887,9 +12887,9 @@ function refreshAntiBotStatus() {
                 <span class="mc-field-label">Target Hotkey (1-12)</span>
                 <input type="number" id="minibia-bot-auto-attack-hotkey" min="1" max="12" placeholder="3" />
               </label>
-              <label class="mc-field" for="minibia-bot-auto-attack-rune-hotkey">
+              <label class="mc-field" for="minibia-copilot-auto-attack-rune-hotkey">
                 <span class="mc-field-label">Rune Hotkey (1-12)</span>
-                <input type="number" id="minibia-bot-auto-attack-rune-hotkey" min="1" max="12" placeholder="4" />
+                <input type="number" id="minibia-copilot-auto-attack-rune-hotkey" min="1" max="12" placeholder="4" />
               </label>
               <div class="mc-small-note">El modo cuerpo a cuerpo utiliza la tecla de acceso rápido para seleccionar un objetivo y luego se coloca junto a él.</div>
             </div>
