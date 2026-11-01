@@ -21,13 +21,35 @@ window.__minibiaCopilotBundle.installRuntimeInspectorModule =
       console.log("[Minibia Runtime Inspector]", ...args);
     }
 
-    function safeGlobalRead(name) {
-      try {
-        return window[name];
-      } catch (error) {
-        return undefined;
+function safeGlobalRead(name) {
+  try {
+    let current = window;
+
+    while (current) {
+      const descriptor = Object.getOwnPropertyDescriptor(
+        current,
+        name
+      );
+
+      if (descriptor) {
+        // Nunca ejecutar getters protegidos.
+        if (!Object.prototype.hasOwnProperty.call(
+          descriptor, "value"
+        )) {
+          return undefined;
+        }
+
+        return descriptor.value;
       }
+
+      current = Object.getPrototypeOf(current);
     }
+  } catch (error) {
+    return undefined;
+  }
+
+  return undefined;
+}
 
     function refresh() {
       let foundClient = null;
