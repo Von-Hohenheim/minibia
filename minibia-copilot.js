@@ -15169,6 +15169,105 @@ bot.heal.evaluateDom = function evaluateDom() {
     source: "runtime-adapter"
   };
 };
+
+/**
+ * Monitor periódico de Auto Heal mediante Runtime Adapter.
+ * Solo evalúa y registra cambios; no ejecuta curaciones.
+ */
+if (bot.heal && typeof bot.heal.evaluateDom === "function") {
+  const monitorState = {
+    timer: null,
+    lastResult: null,
+    lastDecision: null,
+    lastError: null
+  };
+
+  function checkHeal() {
+    let result;
+
+    try {
+      result = bot.heal.evaluateDom();
+      monitorState.lastError = null;
+    } catch (error) {
+      monitorState.lastError = String(error);
+      result = null;
+    }
+
+    monitorState.lastResult = result;
+
+    const decision =
+      result?.available === true &&
+      typeof result.shouldHeal === "boolean"
+        ? result.shouldHeal
+        : null;
+
+    if (decision !== monitorState.lastDecision) {
+      monitorState.lastDecision = decision;
+
+      if (decision === true) {
+        console.warn(
+          "[Auto Heal] Curación necesaria:",
+          result.health,
+          "/",
+          result.maxHealth,
+          "HP"
+        );
+      } else if (decision === false) {
+        console.info(
+          "[Auto Heal] HP fuera del umbral de curación:",
+          result.health,
+          "/",
+          result.maxHealth
+        );
+      }
+    }
+
+    return result;
+  }
+
+  const domMonitor = {
+    start() {
+      if (monitorState.timer !== null) return false;
+
+      checkHeal();
+
+      monitorState.timer = setInterval(
+        checkHeal,
+        300
+      );
+
+      return true;
+    },
+
+    stop() {
+      if (monitorState.timer === null) return false;
+
+      clearInterval(monitorState.timer);
+      monitorState.timer = null;
+      return true;
+    },
+
+    check: checkHeal,
+
+    status() {
+      return {
+        running: monitorState.timer !== null,
+        lastResult: monitorState.lastResult,
+        lastDecision: monitorState.lastDecision,
+        lastError: monitorState.lastError,
+        actionExecuted: false
+      };
+    }
+  };
+
+  bot.heal.domMonitor = domMonitor;
+
+  if (typeof bot.addCleanup === "function") {
+    bot.addCleanup(() => domMonitor.stop());
+  }
+}
+
+
     currentBundle.installAutoInvisibleModule(bot);
     currentBundle.installAutoMagicShieldModule(bot);
     currentBundle.installAutoAttackModule(bot);
