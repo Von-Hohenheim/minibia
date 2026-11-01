@@ -4,6 +4,7 @@ set -euo pipefail
 cat \
   src/core.js \
   src/modules/runtime-inspector.js \
+  src/modules/runtime-adapter.js \
   src/modules/pz.js \
   src/modules/xray.js \
   src/modules/panic.js \

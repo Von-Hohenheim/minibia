@@ -99,6 +99,10 @@
 if (typeof currentBundle.installRuntimeInspectorModule === "function") {
   currentBundle.installRuntimeInspectorModule(bot);
 }
+if (typeof currentBundle.installRuntimeAdapterModule === "function") {
+  currentBundle.installRuntimeAdapterModule(bot);
+}
+
     currentBundle.installPzModule(bot);
     currentBundle.installXrayModule(bot);
     currentBundle.installPanicModule(bot);
