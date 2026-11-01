@@ -15098,6 +15098,77 @@ if (typeof currentBundle.installRuntimeAdapterModule === "function") {
     currentBundle.installPanicModule(bot);
     currentBundle.installRuneModule(bot);
     currentBundle.installHealModule(bot);
+/**
+ * Auto Heal + Runtime Adapter
+ * Evaluación de curación mediante datos del DOM.
+ * No ejecuta habilidades ni accede a GameClient.
+ */
+bot.heal.evaluateDom = function evaluateDom() {
+  const adapter = bot.runtimeAdapter;
+
+  if (!adapter || typeof adapter.getStats !== "function") {
+    return {
+      available: false,
+      reason: "Runtime Adapter no disponible",
+      shouldHeal: null
+    };
+  }
+
+  const stats = adapter.getStats();
+
+  if (!stats) {
+    return {
+      available: false,
+      reason: "Personaje no encontrado en el DOM",
+      shouldHeal: null
+    };
+  }
+
+  let config = {};
+
+  try {
+    config = bot.heal.status()?.config || {};
+  } catch (error) {
+    console.warn("[Heal DOM] Error de configuración:", error);
+  }
+
+  const minHp = Number.isFinite(config.minHp)
+    ? config.minHp
+    : null;
+
+  const hpValid =
+    Number.isFinite(stats.health) &&
+    Number.isFinite(stats.maxHealth) &&
+    stats.maxHealth > 0 &&
+    stats.health >= 0 &&
+    stats.health <= stats.maxHealth;
+
+  const manaPercentValid =
+    Number.isFinite(stats.manaPercent) &&
+    stats.manaPercent >= 0 &&
+    stats.manaPercent <= 100;
+
+  const shouldHeal = hpValid && minHp !== null
+    ? stats.health <= minHp &&
+      stats.health < stats.maxHealth
+    : null;
+
+  return {
+    available: hpValid,
+    name: stats.name,
+    health: hpValid ? stats.health : null,
+    maxHealth: hpValid ? stats.maxHealth : null,
+    healthPercent: hpValid ? stats.healthPercent : null,
+    manaPercent: manaPercentValid
+      ? stats.manaPercent
+      : null,
+    minHp,
+    shouldHeal,
+    manaRefillRequired: null,
+    actionExecuted: false,
+    source: "runtime-adapter"
+  };
+};
     currentBundle.installAutoInvisibleModule(bot);
     currentBundle.installAutoMagicShieldModule(bot);
     currentBundle.installAutoAttackModule(bot);
