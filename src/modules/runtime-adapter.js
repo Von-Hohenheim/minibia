@@ -9,7 +9,7 @@
   window.__minibiaCopilotBundle.installRuntimeAdapterModule =
     function installRuntimeAdapterModule(bot) {
       const storageKey = "minibiaBot.runtimeAdapter.playerName";
-      const defaultName = "Cuitlahuac";
+      const defaultName = "Pally Do Mal";
       let playerName = defaultName;
 
       try {
