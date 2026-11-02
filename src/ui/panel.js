@@ -208,10 +208,16 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
   }
 
   function refreshAutoEatStatus() {
-    const autoEatToggle = document.getElementById("minibia-copilot-auto-eat-enabled");
-    if (!autoEatToggle) return;
-
-    autoEatToggle.checked = !!bot.eat?.status?.().running;
+    const toggle = document.getElementById("minibia-copilot-auto-eat-enabled");
+    const label = document.getElementById("minibia-copilot-auto-eat-status");
+    const status = bot.eat?.status?.();
+    if (toggle) toggle.checked = !!status?.running;
+    if (!label) return;
+    const food = status?.foodRaw ?? "no visible";
+    const mode = status?.running ? "Activo" : "Inactivo";
+    const wait = status?.waitingForFoodReset ? " · esperando que Food aumente" : "";
+    label.textContent = `${mode} · Food: ${food}${wait}` +
+      (status?.lastError ? ` · ${status.lastError}` : "");
   }
 
   function refreshAutoHealStatus() {
@@ -2573,10 +2579,33 @@ function refreshAntiBotStatus() {
               <input type="checkbox" id="minibia-copilot-auto-eat-enabled" />
               <span>Activar Auto Eat</span>
             </label>
-            <label class="mc-field" for="minibia-copilot-auto-eat-hotkey">
-              <span class="mc-field-label">Eat Hotkey (1-12)</span>
-              <input type="number" id="minibia-copilot-auto-eat-hotkey" min="1" max="12" placeholder="10" />
-            </label>
+            <div class="mc-heal-rule">
+              <div class="mc-heal-rule-head">Comida automática</div>
+              <div class="mc-field-grid">
+                <div class="mc-field">
+                  <span class="mc-field-label">Comer cuando Food sea</span>
+                  <strong>0</strong>
+                </div>
+                <label class="mc-field" for="minibia-copilot-auto-eat-hotkey">
+                  <span class="mc-field-label">Tecla de comida</span>
+                  <select id="minibia-copilot-auto-eat-hotkey">
+                      <option value="1">F1</option>
+                      <option value="2">F2</option>
+                      <option value="3">F3</option>
+                      <option value="4">F4</option>
+                      <option value="5">F5</option>
+                      <option value="6">F6</option>
+                      <option value="7">F7</option>
+                      <option value="8">F8</option>
+                      <option value="9">F9</option>
+                      <option value="10">F10</option>
+                      <option value="11">F11</option>
+                      <option value="12">F12</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            <div class="mc-small-note" id="minibia-copilot-auto-eat-status">Estado: inactivo</div>
           </div>
         </div>
 
@@ -2991,26 +3020,22 @@ function refreshAntiBotStatus() {
     if (autoEatHotkeyInput) {
       autoEatHotkeyInput.value = String(bot.eat?.config?.eatHotbarSlot ?? 10);
       autoEatHotkeyInput.addEventListener("change", () => {
-        const eatHotbarSlot = Math.min(12, Math.max(1, Number(autoEatHotkeyInput.value) || 1));
+        const eatHotbarSlot = Math.min(12, Math.max(1, Number(autoEatHotkeyInput.value) || 10));
         autoEatHotkeyInput.value = String(eatHotbarSlot);
-        bot.eat.updateConfig({ eatHotbarSlot });
+        bot.eat?.updateConfig?.({ eatHotbarSlot });
+        refreshAutoEatStatus();
       });
     }
 
     if (autoEatEnabledInput) {
       autoEatEnabledInput.checked = !!bot.eat?.status?.().running;
       autoEatEnabledInput.addEventListener("change", () => {
-        const eatHotbarSlot = Math.min(
-          12,
-          Math.max(1, Number(autoEatHotkeyInput?.value) || bot.eat.config.eatHotbarSlot || 1)
-        );
-
+        const eatHotbarSlot = Math.min(12, Math.max(1, Number(autoEatHotkeyInput?.value) || 10));
         if (autoEatEnabledInput.checked) {
-          bot.eat.start({ eatHotbarSlot });
+          bot.eat?.start?.({ eatHotbarSlot });
         } else {
-          bot.eat.stop();
+          bot.eat?.stop?.();
         }
-
         refreshAutoEatStatus();
       });
     }
@@ -3801,6 +3826,7 @@ function refreshAntiBotStatus() {
       refreshLootbagStatus();
       refreshAutoHealStatus();
       refreshRuneStatus();
+      refreshAutoEatStatus();
     }, 1000);
     bot.addCleanup(() => {
       window.clearInterval(snapshotTimerId);
