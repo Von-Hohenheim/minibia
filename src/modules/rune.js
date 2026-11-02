@@ -1,4 +1,4 @@
-// Magic Level Trainer (rune.js) — integrado con Runtime Adapter.
+// Magic Level Trainer — integrado con Runtime Adapter; condición única: maná (%).
 // No accede a window.gameClient ni utiliza bot.sendChat().
 window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
@@ -11,7 +11,6 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
     tickMs: 350,
     runeHotbarSlot: 3,
     minManaPercent: 90,
-    minHpPercent: 90,
     runeCooldownMs: 3500,
     confirmMs: 1500,
     enabled: false,
@@ -20,6 +19,9 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
   const config = Object.assign(
     {}, defaults, bot.storage?.get?.(configStorageKey, {}) || {}
   );
+  // Configuraciones de versiones previas pudieron contener minHpPercent.
+  // Se elimina: este entrenador depende exclusivamente del porcentaje de maná.
+  delete config.minHpPercent;
 
   const state = {
     running: false,
@@ -61,14 +63,7 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
       state.lastError = `Lectura DOM: ${String(error)}`;
     }
 
-    const hp = player && Number.isFinite(player.health) &&
-      Number.isFinite(player.maxHealth) && player.maxHealth > 0 &&
-      player.health >= 0 && player.health <= player.maxHealth
-      ? { current: player.health, max: player.maxHealth }
-      : null;
-
     const manaPercent = percent(player?.manaPercent);
-    const hpPercent = hp ? (hp.current / hp.max) * 100 : null;
 
     // Lectura informativa; no usar como fuente de datos del GameClient.
     const foodText = document.querySelector(
@@ -81,8 +76,6 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
 
     return {
       name: player?.name ?? null,
-      hp,
-      hpPercent,
       mana: null,
       manaPercent,
       food,
@@ -134,9 +127,6 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
 
   function canMakeRune(stats = readStats(), now = Date.now()) {
     return !!(
-      stats.hp && stats.hp.current > 0 &&
-      stats.hpPercent !== null &&
-      stats.hpPercent >= config.minHpPercent &&
       stats.manaPercent !== null &&
       stats.manaPercent >= config.minManaPercent &&
       state.pending === null &&
@@ -226,8 +216,8 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
     updateConfig({ ...overrides, enabled: false });
 
     const stats = readStats();
-    if (!stats.hp || stats.manaPercent === null) {
-      state.lastError = "Runtime Adapter no proporciona HP y maná porcentual.";
+    if (stats.manaPercent === null) {
+      state.lastError = "Runtime Adapter no proporciona porcentaje de maná.";
       return false;
     }
     if (!findSpellButton()) {
@@ -262,9 +252,8 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
     if (Object.prototype.hasOwnProperty.call(patch, "minManaPercent")) {
       patch.minManaPercent = clamp(patch.minManaPercent, 1, 100, config.minManaPercent);
     }
-    if (Object.prototype.hasOwnProperty.call(patch, "minHpPercent")) {
-      patch.minHpPercent = clamp(patch.minHpPercent, 1, 100, config.minHpPercent);
-    }
+    // Ignorar el parámetro legado de HP, aunque lo envíe otro módulo.
+    delete patch.minHpPercent;
     if (Object.prototype.hasOwnProperty.call(patch, "runeCooldownMs")) {
       patch.runeCooldownMs = clamp(patch.runeCooldownMs, 2000, 60000, config.runeCooldownMs);
     }

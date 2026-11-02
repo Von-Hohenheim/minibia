@@ -2483,7 +2483,7 @@ window.__minibiaCopilotBundle.installPanicModule = function installPanicModule(b
     config,
   };
 };
-// Magic Level Trainer (rune.js) — integrado con Runtime Adapter.
+// Magic Level Trainer — integrado con Runtime Adapter; condición única: maná (%).
 // No accede a window.gameClient ni utiliza bot.sendChat().
 window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
@@ -2496,7 +2496,6 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
     tickMs: 350,
     runeHotbarSlot: 3,
     minManaPercent: 90,
-    minHpPercent: 90,
     runeCooldownMs: 3500,
     confirmMs: 1500,
     enabled: false,
@@ -2505,6 +2504,9 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
   const config = Object.assign(
     {}, defaults, bot.storage?.get?.(configStorageKey, {}) || {}
   );
+  // Configuraciones de versiones previas pudieron contener minHpPercent.
+  // Se elimina: este entrenador depende exclusivamente del porcentaje de maná.
+  delete config.minHpPercent;
 
   const state = {
     running: false,
@@ -2546,14 +2548,7 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
       state.lastError = `Lectura DOM: ${String(error)}`;
     }
 
-    const hp = player && Number.isFinite(player.health) &&
-      Number.isFinite(player.maxHealth) && player.maxHealth > 0 &&
-      player.health >= 0 && player.health <= player.maxHealth
-      ? { current: player.health, max: player.maxHealth }
-      : null;
-
     const manaPercent = percent(player?.manaPercent);
-    const hpPercent = hp ? (hp.current / hp.max) * 100 : null;
 
     // Lectura informativa; no usar como fuente de datos del GameClient.
     const foodText = document.querySelector(
@@ -2566,8 +2561,6 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
 
     return {
       name: player?.name ?? null,
-      hp,
-      hpPercent,
       mana: null,
       manaPercent,
       food,
@@ -2619,9 +2612,6 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
 
   function canMakeRune(stats = readStats(), now = Date.now()) {
     return !!(
-      stats.hp && stats.hp.current > 0 &&
-      stats.hpPercent !== null &&
-      stats.hpPercent >= config.minHpPercent &&
       stats.manaPercent !== null &&
       stats.manaPercent >= config.minManaPercent &&
       state.pending === null &&
@@ -2711,8 +2701,8 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
     updateConfig({ ...overrides, enabled: false });
 
     const stats = readStats();
-    if (!stats.hp || stats.manaPercent === null) {
-      state.lastError = "Runtime Adapter no proporciona HP y maná porcentual.";
+    if (stats.manaPercent === null) {
+      state.lastError = "Runtime Adapter no proporciona porcentaje de maná.";
       return false;
     }
     if (!findSpellButton()) {
@@ -2747,9 +2737,8 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
     if (Object.prototype.hasOwnProperty.call(patch, "minManaPercent")) {
       patch.minManaPercent = clamp(patch.minManaPercent, 1, 100, config.minManaPercent);
     }
-    if (Object.prototype.hasOwnProperty.call(patch, "minHpPercent")) {
-      patch.minHpPercent = clamp(patch.minHpPercent, 1, 100, config.minHpPercent);
-    }
+    // Ignorar el parámetro legado de HP, aunque lo envíe otro módulo.
+    delete patch.minHpPercent;
     if (Object.prototype.hasOwnProperty.call(patch, "runeCooldownMs")) {
       patch.runeCooldownMs = clamp(patch.runeCooldownMs, 2000, 60000, config.runeCooldownMs);
     }
@@ -11628,9 +11617,8 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     if (runeToggle) runeToggle.checked = !!status?.running;
     if (statusLabel) {
       const stats = status?.stats;
-      const hp = stats?.hpPercent;
       const mana = stats?.manaPercent;
-      const values = `HP ${hp == null ? "?" : Math.round(hp)}% · MP ${mana == null ? "?" : Math.round(mana)}%`;
+      const values = `MP ${mana == null ? "?" : Math.round(mana)}%`;
       statusLabel.textContent = status?.lastError
         ? `Error: ${status.lastError}`
         : (status?.running ? `Entrenando · ${values}` : `Inactivo · ${values}`);
@@ -13968,33 +13956,34 @@ function refreshAntiBotStatus() {
                 <input type="checkbox" id="minibia-copilot-rune-enabled" />
                 <span>Activar ML Trainer</span>
               </label>
-              <label class="mc-field" for="minibia-copilot-rune-hotkey">
-                <span class="mc-field-label">Hechizo en hotbar</span>
-                <select id="minibia-copilot-rune-hotkey">
-                  <option value="1">F1</option>
-                  <option value="2">F2</option>
-                  <option value="3">F3</option>
-                  <option value="4">F4</option>
-                  <option value="5">F5</option>
-                  <option value="6">F6</option>
-                  <option value="7">F7</option>
-                  <option value="8">F8</option>
-                  <option value="9">F9</option>
-                  <option value="10">F10</option>
-                  <option value="11">F11</option>
-                  <option value="12">F12</option>
-                </select>
-              </label>
-              <label class="mc-field" for="minibia-copilot-rune-mana-percent">
-                <span class="mc-field-label">Usar con mana ≥ (%)</span>
-                <input type="number" id="minibia-copilot-rune-mana-percent" min="1" max="100" value="90" />
-              </label>
-              <label class="mc-field" for="minibia-copilot-rune-hp-percent">
-                <span class="mc-field-label">Solo con HP ≥ (%)</span>
-                <input type="number" id="minibia-copilot-rune-hp-percent" min="1" max="100" value="90" />
-              </label>
+              <div class="mc-heal-rule">
+                <div class="mc-heal-rule-head">Entrenamiento de magia <span>Solo maná</span></div>
+                <div class="mc-field-grid">
+                  <label class="mc-field" for="minibia-copilot-rune-mana-percent">
+                    <span class="mc-field-label">Usar con maná ≥ (%)</span>
+                    <input type="number" id="minibia-copilot-rune-mana-percent" min="1" max="100" step="1" value="90" />
+                  </label>
+                  <label class="mc-field" for="minibia-copilot-rune-hotkey">
+                    <span class="mc-field-label">Tecla del hechizo</span>
+                    <select id="minibia-copilot-rune-hotkey">
+                      <option value="1">F1</option>
+                      <option value="2">F2</option>
+                      <option value="3">F3</option>
+                      <option value="4">F4</option>
+                      <option value="5">F5</option>
+                      <option value="6">F6</option>
+                      <option value="7">F7</option>
+                      <option value="8">F8</option>
+                      <option value="9">F9</option>
+                      <option value="10">F10</option>
+                      <option value="11">F11</option>
+                      <option value="12">F12</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
               <div class="mc-small-note" id="minibia-copilot-rune-status">Estado: inactivo</div>
-              <div class="mc-small-note">Coloca un hechizo en F1–F12. El entrenador no escribe en el chat ni usa objetos.</div>
+              <div class="mc-small-note">Entrena cuando alcance el maná configurado, sin depender de la vida del personaje.</div>
             </div>
           </div>
 
@@ -14137,7 +14126,6 @@ function refreshAntiBotStatus() {
 
     const runeHotkeyInput = panel.querySelector("#minibia-copilot-rune-hotkey");
     const runeManaPercentInput = panel.querySelector("#minibia-copilot-rune-mana-percent");
-    const runeHpPercentInput = panel.querySelector("#minibia-copilot-rune-hp-percent");
     const runeEnabledInput = panel.querySelector("#minibia-copilot-rune-enabled");
     const autoEatEnabledInput = panel.querySelector("#minibia-copilot-auto-eat-enabled");
     const autoEatHotkeyInput = panel.querySelector("#minibia-copilot-auto-eat-hotkey");
@@ -14405,15 +14393,6 @@ function refreshAntiBotStatus() {
       });
     }
 
-    if (runeHpPercentInput) {
-      runeHpPercentInput.value = String(bot.rune?.config?.minHpPercent ?? 90);
-      runeHpPercentInput.addEventListener("change", () => {
-        const minHpPercent = Math.min(100, Math.max(1, Number(runeHpPercentInput.value) || 90));
-        runeHpPercentInput.value = String(minHpPercent);
-        bot.rune?.updateConfig?.({ minHpPercent });
-      });
-    }
-
     if (runeEnabledInput) {
       runeEnabledInput.checked = !!bot.rune?.status?.().running;
       runeEnabledInput.addEventListener("change", () => {
@@ -14421,7 +14400,6 @@ function refreshAntiBotStatus() {
           bot.rune?.start?.({
             runeHotbarSlot: Number(runeHotkeyInput?.value || 3),
             minManaPercent: Number(runeManaPercentInput?.value || 90),
-            minHpPercent: Number(runeHpPercentInput?.value || 90),
           });
         } else {
           bot.rune?.stop?.();
