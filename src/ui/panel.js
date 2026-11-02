@@ -2421,7 +2421,7 @@ function refreshAntiBotStatus() {
                     </select>
                   </label>
                 </div>
-                <div class="mc-small-note">Si ambas condiciones se cumplen, se usa primero esta tecla. Recomendado: magia fuerte o UH.</div>
+                <div class="mc-small-note">Si ambas condiciones se cumplen, se usa primero esta tecla.</div>
               </div>
               <div class="mc-field-grid">
                 <label class="mc-field" for="minibia-copilot-auto-heal-min-mana">
@@ -2450,7 +2450,6 @@ function refreshAntiBotStatus() {
                 <input type="checkbox" id="minibia-copilot-auto-heal-mana-enabled" />
                 <span>Usar pociones de maná (opcional)</span>
               </label>
-              <div class="mc-small-note">Personaje detectado automáticamente. Sin selector de tipo: cada tecla se identifica por su título. Curación prioritaria → normal → maná. Verifica que las runas se usen sobre tu personaje.</div>
               <div class="mc-small-note" id="minibia-copilot-auto-heal-status">Estado: esperando datos</div>
             </div>
           </div>
@@ -2539,10 +2538,10 @@ function refreshAntiBotStatus() {
                 <span>Activar ML Trainer</span>
               </label>
               <div class="mc-heal-rule">
-                <div class="mc-heal-rule-head">Entrenamiento de magia <span>Solo maná</span></div>
+                <div class="mc-heal-rule-head">Entrenamiento de magia</div>
                 <div class="mc-field-grid">
                   <label class="mc-field" for="minibia-copilot-rune-mana-percent">
-                    <span class="mc-field-label">Usar con maná ≥ (%)</span>
+                    <span class="mc-field-label">Usar con (%) de maná</span>
                     <input type="number" id="minibia-copilot-rune-mana-percent" min="1" max="100" step="1" value="90" />
                   </label>
                   <label class="mc-field" for="minibia-copilot-rune-hotkey">
@@ -2565,7 +2564,6 @@ function refreshAntiBotStatus() {
                 </div>
               </div>
               <div class="mc-small-note" id="minibia-copilot-rune-status">Estado: inactivo</div>
-              <div class="mc-small-note">Entrena cuando alcance el maná configurado, sin depender de la vida del personaje.</div>
             </div>
           </div>
 
