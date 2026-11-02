@@ -143,7 +143,7 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
 
     return healingText.test(title) && !negativeText.test(title)
       ? "spell"
-      : null;
+      : null; 
   }
 
   function matchesHealMode(node, mode) {
