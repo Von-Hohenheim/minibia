@@ -1122,186 +1122,122 @@ function safeGlobalRead(name) {
 
     return api;
   };
-
- // Minibia Runtime Adapter — lector DOM de estadísticas (solo lectura).
-// No accede a window.gameClient ni ejecuta getters internos del juego.
+// Minibia Runtime Adapter — lee exclusivamente datos visibles del DOM.
+// La detección automática es conservadora: una sola barra de HP válida
+// con nombre y maná visible. En caso ambiguo, devuelve null.
 (function () {
   "use strict";
 
   window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
-
   window.__minibiaCopilotBundle.installRuntimeAdapterModule =
     function installRuntimeAdapterModule(bot) {
-      const storageKey = "minibiaBot.runtimeAdapter.playerName";
-      const defaultName = "Cuitlahuac";
-      let playerName = defaultName;
+      const nameStorageKey = "minibiaBot.runtimeAdapter.playerName";
+      const modeStorageKey = "minibiaBot.runtimeAdapter.nameMode.v2";
+      let mode = bot.storage?.get?.(modeStorageKey, "auto") === "manual"
+        ? "manual" : "auto";
+      let manualName = String(bot.storage?.get?.(nameStorageKey, "") || "").trim();
+      if (mode === "manual" && !manualName) mode = "auto";
 
-      try {
-        const stored = bot.storage?.get?.(storageKey, defaultName);
-        if (typeof stored === "string" && stored.trim()) {
-          playerName = stored.trim();
-        }
-      } catch (_) {
-        // La lectura del DOM funciona incluso sin almacenamiento.
-      }
+      const healthPattern = /^\s*(\d+)\s*\/\s*(\d+)\s*$/;
 
-      function parsePercentage(inlineWidth) {
-        // Solo aceptar el porcentaje escrito directamente por la interfaz.
-        // No usar getComputedStyle: un 100% por CSS puede ser un valor inicial.
-        const match = String(inlineWidth || "")
-          .trim()
-          .match(/^(\d+(?:\.\d+)?)%$/);
-
+      function parsePercent(value) {
+        const match = String(value || "").trim().match(/^(\d+(?:\.\d+)?)%$/);
         if (!match) return null;
-
-        const percentage = Number(match[1]);
-
-        return Number.isFinite(percentage) &&
-          percentage >= 0 &&
-          percentage <= 100
-          ? percentage
-          : null;
+        const num = Number(match[1]);
+        return Number.isFinite(num) && num >= 0 && num <= 100 ? num : null;
       }
 
       function isVisible(element) {
-        if (
-          !element ||
-          !element.isConnected ||
-          !element.getClientRects().length
-        ) {
-          return false;
-        }
-
-        const style = window.getComputedStyle(element);
-
-        return (
-          style.display !== "none" &&
-          style.visibility !== "hidden"
-        );
+        if (!element?.isConnected || element.getClientRects().length === 0) return false;
+        const style = getComputedStyle(element);
+        return style.display !== "none" && style.visibility !== "hidden";
       }
 
-      function getPlayerElement() {
-        // No asumir que character-element-prototype es estable.
-        // La interfaz puede reciclar nodos y generar duplicados.
-        const matches = Array.from(
-          document.querySelectorAll(".text-window")
-        ).filter((element) => {
-          const label = element
-            .querySelector(".skull-name-row")
-            ?.textContent?.trim();
-
-          return label === playerName && isVisible(element);
-        });
-
-        // No seleccionar arbitrariamente entre varias coincidencias.
-        return matches.length === 1 ? matches[0] : null;
-      }
-
-      function getStats() {
-        const element = getPlayerElement();
-
-        if (!element) return null;
-
-        const hpBar = element.querySelector(".value-health");
-        const manaBar = element.querySelector(".value-mana");
-
-        const hpMatch = (hpBar?.getAttribute("title") || "")
-          .match(/^\s*(\d+)\s*\/\s*(\d+)\s*$/);
-
-        let health = null;
-        let maxHealth = null;
-
-        if (hpMatch) {
-          const current = Number(hpMatch[1]);
-          const maximum = Number(hpMatch[2]);
-
-          if (
-            Number.isSafeInteger(current) &&
-            Number.isSafeInteger(maximum) &&
-            maximum > 0 &&
-            current >= 0 &&
-            current <= maximum
-          ) {
-            health = current;
-            maxHealth = maximum;
-          }
-        }
-
-        const healthPercent = maxHealth !== null
-          ? Math.round((health / maxHealth) * 10000) / 100
-          : null;
-
-        const manaPercent = parsePercentage(manaBar?.style?.width);
-
-        if (health === null && manaPercent === null) {
-          return null;
-        }
-
+      function readCandidate(element) {
+        if (!isVisible(element)) return null;
+        const name = element.querySelector(".skull-name-row")?.textContent?.trim();
+        const hp = element.querySelector(".value-health");
+        const mana = element.querySelector(".value-mana");
+        const match = hp?.getAttribute("title")?.match(healthPattern);
+        const manaPercent = parsePercent(mana?.style?.width);
+        if (!name || !match || manaPercent === null) return null;
+        const health = Number(match[1]);
+        const maxHealth = Number(match[2]);
+        if (!Number.isSafeInteger(health) || !Number.isSafeInteger(maxHealth) ||
+            maxHealth <= 0 || health < 0 || health > maxHealth) return null;
         return {
-          name: playerName,
+          name,
           health,
           maxHealth,
-          healthPercent,
+          healthPercent: Math.round((health / maxHealth) * 10000) / 100,
           mana: null,
           maxMana: null,
           manaPercent,
           source: "dom",
-          observedAt: new Date().toISOString()
+          observedAt: new Date().toISOString(),
         };
       }
 
+      function candidates() {
+        return Array.from(document.querySelectorAll(".text-window"))
+          .map(readCandidate).filter(Boolean);
+      }
+
+      function getStats() {
+        const all = candidates();
+        const matches = mode === "manual"
+          ? all.filter((item) => item.name === manualName)
+          : all;
+        // No inferir al jugador por proximidad ni escoger el primer nombre.
+        return matches.length === 1 ? matches[0] : null;
+      }
+
       function setPlayerName(name) {
-        if (typeof name !== "string" || !name.trim()) {
-          return false;
+        if (typeof name !== "string") return false;
+        const cleaned = name.trim();
+        if (!cleaned || cleaned.toLowerCase() === "auto") {
+          mode = "auto";
+          manualName = "";
+        } else {
+          mode = "manual";
+          manualName = cleaned;
         }
-
-        playerName = name.trim();
-
-        try {
-          bot.storage?.set?.(storageKey, playerName);
-        } catch (_) {}
-
+        bot.storage?.set?.(modeStorageKey, mode);
+        if (manualName) bot.storage?.set?.(nameStorageKey, manualName);
         return true;
       }
 
       const api = {
         getStats,
         setPlayerName,
-
         status() {
-          const stats = getStats();
-
+          const all = candidates();
+          const matching = mode === "manual"
+            ? all.filter((item) => item.name === manualName)
+            : all;
+          const stats = matching.length === 1 ? matching[0] : null;
           return {
             installed: true,
-            playerName,
-            playerVisible: stats !== null,
-            healthAvailable:
-              stats?.health !== null &&
-              stats?.health !== undefined,
-            manaPercentAvailable:
-              stats?.manaPercent !== null &&
-              stats?.manaPercent !== undefined,
+            detectionMode: mode,
+            playerName: stats?.name ?? (mode === "manual" ? manualName : null),
+            playerVisible: !!stats,
+            healthAvailable: stats?.health != null,
+            manaPercentAvailable: stats?.manaPercent != null,
+            candidateCount: matching.length,
+            reason: matching.length === 0 ? "Sin candidato válido" :
+              matching.length > 1 ? "Varios candidatos: lectura bloqueada" : null,
             source: "dom",
-            readOnly: true
+            readOnly: true,
           };
-        }
+        },
       };
 
       bot.runtimeAdapter = api;
       window.__minibiaRuntimeAdapter = api;
-
-      if (typeof bot.addCleanup === "function") {
-        bot.addCleanup(() => {
-          if (window.__minibiaRuntimeAdapter === api) {
-            delete window.__minibiaRuntimeAdapter;
-          }
-
-          if (bot.runtimeAdapter === api) {
-            delete bot.runtimeAdapter;
-          }
-        });
-      }
-
+      bot.addCleanup?.(() => {
+        if (window.__minibiaRuntimeAdapter === api) delete window.__minibiaRuntimeAdapter;
+        if (bot.runtimeAdapter === api) delete bot.runtimeAdapter;
+      });
       return api;
     };
 })();
@@ -2912,323 +2848,418 @@ window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot
 window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot) {
+  "use strict";
+
   const configStorageKey = "minibiaCopilot.heal.config";
+  const defaults = {
+    tickMs: 300,
+    healCooldownMs: 3000,
+    healRetryMs: 3000,
+    healConfirmMs: 1500,
+    minHp: 250,               // Campo antiguo, conservado para compatibilidad.
+    minHpPercent: 60,         // Porcentaje real que controla Auto Heal.
+    hpHotbarSlot: 1,
+    minMana: 150,              // Conservado para compatibilidad; requiere maná absoluto.
+    minManaPercent: 25,        // El Runtime Adapter actual solo proporciona porcentaje.
+    manaEnabled: false,        // Evita consumir pociones de maná sin autorización explícita.
+    manaHotbarSlot: 2,
+    enabled: false,
+  };
+
+  const config = Object.assign({}, defaults, bot.storage.get(configStorageKey, {}) || {});
   const state = {
     running: false,
+    monitorOnly: false,
     timerId: null,
+    pendingAttempt: null,
     lastHpHealAt: 0,
     lastManaHealAt: 0,
     lastHpAttemptAt: 0,
     lastManaAttemptAt: 0,
-    pendingHpAttempt: null,
-    pendingManaAttempt: null,
+    lastResult: null,
+    lastDecision: null,
+    lastAction: null,
+    lastError: null,
+    failedAttempts: 0,
   };
-
-  const config = Object.assign(
-    {
-      tickMs: 50,
-      healCooldownMs: 1200,
-      healRetryMs: 200,
-      healConfirmMs: 250,
-      minHp: 250,
-      hpHotbarSlot: 1,
-      minMana: 150,
-      manaHotbarSlot: 2,
-      enabled: false,
-    },
-    bot.storage.get(configStorageKey, {})
-  );
 
   function persistConfig() {
     bot.storage.set(configStorageKey, { ...config });
   }
 
+  function normalizeHotbarSlot(value) {
+    const slot = Number(value);
+    return Number.isInteger(slot) && slot >= 1 && slot <= 12 ? slot : null;
+  }
+
+  function boundedNumber(value, min, max) {
+    return typeof value === "number" && Number.isFinite(value) &&
+      value >= min && value <= max ? value : null;
+  }
+
   function readStats() {
-    const playerState = bot.getPlayerSnapshot?.();
-
-    return playerState
-      ? {
-          hp: {
-            current: Number(playerState.health ?? 0),
-            max: Number(playerState.maxHealth ?? 0),
-          },
-          mana: {
-            current: Number(playerState.mana ?? 0),
-            max: Number(playerState.maxMana ?? 0),
-          },
-        }
-      : { hp: null, mana: null };
-  }
-
-  function normalizeHotbarSlot(slot) {
-    const value = Number(slot);
-    if (!Number.isFinite(value)) {
-      return null;
+    // Nunca consultar gameClient ni getters protegidos.
+    let raw = null;
+    try {
+      raw = bot.runtimeAdapter?.getStats?.() || null;
+    } catch (error) {
+      state.lastError = "Runtime Adapter: " + String(error);
     }
 
-    const normalized = Math.trunc(value);
-    if (normalized < 1 || normalized > 12) {
-      return null;
-    }
+    const current = boundedNumber(raw?.health, 0, Number.MAX_SAFE_INTEGER);
+    const maximum = boundedNumber(raw?.maxHealth, 1, Number.MAX_SAFE_INTEGER);
+    const hp = current !== null && maximum !== null && current <= maximum
+      ? { current, max: maximum } : null;
 
-    return normalized;
+    const manaCurrent = boundedNumber(raw?.mana, 0, Number.MAX_SAFE_INTEGER);
+    const manaMaximum = boundedNumber(raw?.maxMana, 1, Number.MAX_SAFE_INTEGER);
+    const mana = manaCurrent !== null && manaMaximum !== null && manaCurrent <= manaMaximum
+      ? { current: manaCurrent, max: manaMaximum } : null;
+
+    return {
+      name: raw?.name || null,
+      hp,
+      mana,
+      manaPercent: boundedNumber(raw?.manaPercent, 0, 100),
+      source: hp || mana ? "runtime-adapter" : "unavailable",
+    };
   }
 
-  function hasPendingAttempt() {
-    return !!(state.pendingHpAttempt || state.pendingManaAttempt);
-  }
+  function evaluateDom(stats = readStats()) {
+    const hpLimit = Math.min(100, Math.max(0, Number(config.minHpPercent) || 0));
+    const hpPercent = stats.hp ? (stats.hp.current / stats.hp.max) * 100 : null;
+    const hpRequired = stats.hp
+      ? stats.hp.current > 0 && stats.hp.current < stats.hp.max && hpPercent <= hpLimit
+      : null;
 
-  function didHpHealSucceed(stats, attempt) {
-    if (!stats?.hp || !attempt) {
-      return false;
-    }
-
-    return (
-      stats.hp.current > attempt.hpBefore ||
-      (Number.isFinite(attempt.manaBefore) && Number.isFinite(stats.mana?.current) && stats.mana.current < attempt.manaBefore)
-    );
-  }
-
-  function didManaHealSucceed(stats, attempt) {
-    if (!stats?.mana || !attempt) {
-      return false;
-    }
-
-    return (
-      stats.mana.current > attempt.manaBefore ||
-      (Number.isFinite(attempt.hpBefore) && Number.isFinite(stats.hp?.current) && stats.hp.current > attempt.hpBefore)
-    );
-  }
-
-  function resolvePendingAttempts(stats, now = Date.now()) {
-    const hpAttempt = state.pendingHpAttempt;
-    if (hpAttempt) {
-      if (didHpHealSucceed(stats, hpAttempt)) {
-        state.lastHpHealAt = hpAttempt.attemptedAt;
-        state.pendingHpAttempt = null;
-        bot.log("confirmed hp heal", { slot: hpAttempt.slot });
-      } else if (now - hpAttempt.attemptedAt >= Math.max(50, Number(config.healConfirmMs) || 0)) {
-        state.pendingHpAttempt = null;
-        bot.log("hp heal did not register", { slot: hpAttempt.slot });
+    let manaRequired = null;
+    if (config.manaEnabled) {
+      if (stats.manaPercent !== null) {
+        manaRequired = stats.manaPercent <= Math.min(100, Math.max(0, Number(config.minManaPercent) || 0));
+      } else if (stats.mana) {
+        manaRequired = stats.mana.current <= Math.max(0, Number(config.minMana) || 0);
       }
     }
 
-    const manaAttempt = state.pendingManaAttempt;
-    if (manaAttempt) {
-      if (didManaHealSucceed(stats, manaAttempt)) {
-        state.lastManaHealAt = manaAttempt.attemptedAt;
-        state.pendingManaAttempt = null;
-        bot.log("confirmed mana heal", { slot: manaAttempt.slot });
-      } else if (now - manaAttempt.attemptedAt >= Math.max(50, Number(config.healConfirmMs) || 0)) {
-        state.pendingManaAttempt = null;
-        bot.log("mana heal did not register", { slot: manaAttempt.slot });
+    return {
+      available: !!stats.hp,
+      name: stats.name,
+      health: stats.hp?.current ?? null,
+      maxHealth: stats.hp?.max ?? null,
+      healthPercent: stats.hp
+        ? Math.round((stats.hp.current / stats.hp.max) * 10000) / 100 : null,
+      mana: stats.mana?.current ?? null,
+      maxMana: stats.mana?.max ?? null,
+      manaPercent: stats.manaPercent,
+      minHpPercent: hpLimit,
+      minHp: config.minHp, // Compatibilidad, no controla el disparador.
+      minManaPercent: config.minManaPercent,
+      shouldHeal: hpRequired,
+      shouldRefillMana: manaRequired,
+      actionExecuted: false,
+      source: stats.source,
+    };
+  }
+
+  function findHotbarButton(slot) {
+    const normalized = normalizeHotbarSlot(slot);
+    if (!normalized) return null;
+    const hotkey = "F" + normalized;
+
+    const found = Array.from(document.querySelectorAll(".hotbar-item"))
+      .filter((node) => {
+        if (!node.isConnected || node.getClientRects().length === 0) return false;
+        const style = getComputedStyle(node);
+        if (style.display === "none" || style.visibility === "hidden") return false;
+        if (node.getAttribute("title") !== "Use Item") return false;
+        return node.querySelector(".hotbar-key")?.textContent?.trim() === hotkey;
+      });
+
+    // Nunca escoger al azar entre varios botones iguales.
+    return found.length === 1 ? found[0] : null;
+  }
+
+  function readItemCount(button) {
+    const value = button?.querySelector(".hotbar-text")?.getAttribute("data-count");
+    return typeof value === "string" && /^\d+$/.test(value) ? Number(value) : null;
+  }
+
+  function attempt(kind, slot, stats, now) {
+    const button = findHotbarButton(slot);
+    if (!button) {
+      stop({ reason: "No se encontró un único botón Use Item en F" + slot });
+      return false;
+    }
+
+    const countBefore = readItemCount(button);
+    if (countBefore === 0) {
+      stop({ reason: "No quedan objetos en F" + slot });
+      return false;
+    }
+
+    state.pendingAttempt = {
+      kind,
+      slot,
+      attemptedAt: now,
+      hpBefore: stats.hp?.current ?? null,
+      manaBefore: stats.mana?.current ?? null,
+      manaPercentBefore: stats.manaPercent,
+      countBefore,
+    };
+
+    if (kind === "hp") state.lastHpAttemptAt = now;
+    else state.lastManaAttemptAt = now;
+
+    try {
+      button.click();
+      return true;
+    } catch (error) {
+      state.pendingAttempt = null;
+      stop({ reason: "No se pudo activar F" + slot + ": " + String(error) });
+      return false;
+    }
+  }
+
+  function verifyPending(stats, now) {
+    const pending = state.pendingAttempt;
+    if (!pending) return false;
+    if (now - pending.attemptedAt < Math.max(1200, Number(config.healConfirmMs) || 1500)) {
+      return true;
+    }
+
+    const countAfter = readItemCount(findHotbarButton(pending.slot));
+    const itemConsumed = pending.countBefore !== null && countAfter !== null &&
+      countAfter < pending.countBefore;
+    const hpIncreased = stats.hp && pending.hpBefore !== null &&
+      stats.hp.current > pending.hpBefore;
+    const manaIncreased = stats.mana && pending.manaBefore !== null &&
+      stats.mana.current > pending.manaBefore;
+    const manaPercentIncreased = stats.manaPercent !== null &&
+      pending.manaPercentBefore !== null && stats.manaPercent > pending.manaPercentBefore;
+
+    const confirmed = !!(itemConsumed || (pending.kind === "hp"
+      ? hpIncreased : (manaIncreased || manaPercentIncreased)));
+
+    state.lastAction = {
+      kind: pending.kind,
+      slot: pending.slot,
+      attemptedAt: new Date(pending.attemptedAt).toISOString(),
+      hpBefore: pending.hpBefore,
+      hpAfter: stats.hp?.current ?? null,
+      manaPercentBefore: pending.manaPercentBefore,
+      manaPercentAfter: stats.manaPercent,
+      countBefore: pending.countBefore,
+      countAfter,
+      confirmed,
+    };
+    state.pendingAttempt = null;
+
+    if (confirmed) {
+      state.failedAttempts = 0;
+      if (pending.kind === "hp") state.lastHpHealAt = now;
+      else state.lastManaHealAt = now;
+    } else {
+      state.failedAttempts++;
+      if (state.failedAttempts >= 2) {
+        stop({ reason: "Dos usos sin efecto confirmado; Auto Heal detenido" });
       }
     }
+    return false;
   }
 
   function canUseHpHeal(now = Date.now(), stats = readStats()) {
-    const { hp } = stats;
-    const slot = normalizeHotbarSlot(config.hpHotbarSlot);
-    if (!hp || !slot || state.pendingHpAttempt) return false;
-
-    return (
-      hp.current > 0 &&
-      hp.current <= Math.max(0, Number(config.minHp) || 0) &&
-      now - state.lastHpHealAt >= config.healCooldownMs &&
-      now - state.lastHpAttemptAt >= Math.max(50, Number(config.healRetryMs) || 0)
+    const limit = Math.min(100, Math.max(0, Number(config.minHpPercent) || 0));
+    return !!(
+      stats.hp && stats.hp.current > 0 && stats.hp.current < stats.hp.max &&
+      (stats.hp.current / stats.hp.max) * 100 <= limit &&
+      normalizeHotbarSlot(config.hpHotbarSlot) &&
+      !state.pendingAttempt &&
+      now - state.lastHpAttemptAt >= Math.max(3000, Number(config.healCooldownMs) || 0)
     );
   }
 
   function canUseManaHeal(now = Date.now(), stats = readStats()) {
-    const { mana } = stats;
-    const slot = normalizeHotbarSlot(config.manaHotbarSlot);
-    if (!mana || !slot || state.pendingManaAttempt || state.pendingHpAttempt) return false;
-
-    return (
-      mana.current <= Math.max(0, Number(config.minMana) || 0) &&
-      now - state.lastManaHealAt >= config.healCooldownMs &&
-      now - state.lastManaAttemptAt >= Math.max(50, Number(config.healRetryMs) || 0)
+    const needed = evaluateDom(stats).shouldRefillMana;
+    return !!(
+      stats.hp && stats.hp.current > 0 &&
+      config.manaEnabled && needed === true &&
+      normalizeHotbarSlot(config.manaHotbarSlot) &&
+      !state.pendingAttempt &&
+      now - state.lastManaAttemptAt >= Math.max(3000, Number(config.healCooldownMs) || 0)
     );
   }
 
   function triggerHpHeal(now = Date.now(), stats = readStats()) {
-    if (!canUseHpHeal(now, stats)) {
-      return false;
-    }
-
-    const slot = normalizeHotbarSlot(config.hpHotbarSlot);
-    const clicked = bot.clickHotbar(slot - 1);
-    if (clicked) {
-      state.lastHpAttemptAt = now;
-      state.pendingHpAttempt = {
-        attemptedAt: now,
-        slot,
-        hpBefore: Number(stats.hp?.current ?? 0),
-        manaBefore: Number(stats.mana?.current ?? 0),
-      };
-      bot.log("pressed hp heal hotkey", { slot, minHp: config.minHp });
-    }
-
-    return clicked;
+    return canUseHpHeal(now, stats) && attempt("hp", config.hpHotbarSlot, stats, now);
   }
 
   function triggerManaHeal(now = Date.now(), stats = readStats()) {
-    if (!canUseManaHeal(now, stats)) {
-      return false;
-    }
-
-    const slot = normalizeHotbarSlot(config.manaHotbarSlot);
-    const clicked = bot.clickHotbar(slot - 1);
-    if (clicked) {
-      state.lastManaAttemptAt = now;
-      state.pendingManaAttempt = {
-        attemptedAt: now,
-        slot,
-        hpBefore: Number(stats.hp?.current ?? 0),
-        manaBefore: Number(stats.mana?.current ?? 0),
-      };
-      bot.log("pressed mana heal hotkey", { slot, minMana: config.minMana });
-    }
-
-    return clicked;
+    return canUseManaHeal(now, stats) && attempt("mana", config.manaHotbarSlot, stats, now);
   }
 
   function tryHeal() {
-    if (!config.enabled) {
-      return false;
-    }
-
     const now = Date.now();
     const stats = readStats();
+    const result = evaluateDom(stats);
+    state.lastResult = result;
+    state.lastDecision = result.shouldHeal;
 
-    resolvePendingAttempts(stats, now);
-
-    if (hasPendingAttempt()) {
+    if (state.pendingAttempt) {
+      verifyPending(stats, now);
       return false;
     }
 
-    if (triggerHpHeal(now, stats)) {
-      return true;
-    }
-
+    if (!state.running || state.monitorOnly || !config.enabled) return false;
+    if (triggerHpHeal(now, stats)) return true;
+    if (!state.running) return false;
     return triggerManaHeal(now, stats);
-  }
-
-  function scheduleNextTick() {
-    if (!state.running) return;
-
-    state.timerId = window.setTimeout(() => {
-      tick();
-    }, config.tickMs);
   }
 
   function tick() {
     if (!state.running) return;
-
     try {
       tryHeal();
     } catch (error) {
-      bot.log("auto heal tick failed", error?.message || error);
+      stop({ reason: "Error del monitor: " + String(error) });
     } finally {
-      scheduleNextTick();
+      if (state.running) {
+        state.timerId = window.setTimeout(tick, Math.max(250, Number(config.tickMs) || 300));
+      }
     }
   }
 
   function start(overrides = {}) {
-    Object.assign(config, overrides, { enabled: true });
-    persistConfig();
+    if (state.running && !state.monitorOnly) return false;
+    if (state.running && state.monitorOnly) stop({ persistEnabled: false });
+    updateConfig({ ...overrides, enabled: true });
 
-    if (state.running) {
-      bot.log("auto heal already running");
+    const first = evaluateDom();
+    if (!first.available) {
+      config.enabled = false;
+      persistConfig();
+      state.lastError = "No hay HP válido en Runtime Adapter";
+      return false;
+    }
+    if (!findHotbarButton(config.hpHotbarSlot)) {
+      config.enabled = false;
+      persistConfig();
+      state.lastError = "El slot HP no es un botón Use Item visible y único";
+      return false;
+    }
+    if (config.manaEnabled && !findHotbarButton(config.manaHotbarSlot)) {
+      config.enabled = false;
+      persistConfig();
+      state.lastError = "El slot de maná no es un botón Use Item visible y único";
       return false;
     }
 
     state.running = true;
-    bot.log("auto heal started", { ...config });
+    state.monitorOnly = false;
+    state.failedAttempts = 0;
+    state.lastError = null;
+    tick();
+    return true;
+  }
+
+  function startMonitor() {
+    if (state.running) return false;
+    state.running = true;
+    state.monitorOnly = true;
+    state.lastError = null;
     tick();
     return true;
   }
 
   function stop(options = {}) {
-    const shouldPersistEnabled = options.persistEnabled !== false;
     state.running = false;
-
-    if (state.timerId != null) {
-      window.clearTimeout(state.timerId);
-      state.timerId = null;
-    }
-
-    if (shouldPersistEnabled) {
+    state.monitorOnly = false;
+    if (state.timerId !== null) window.clearTimeout(state.timerId);
+    state.timerId = null;
+    state.pendingAttempt = null;
+    if (options.persistEnabled !== false) {
       config.enabled = false;
       persistConfig();
     }
-    bot.log("auto heal stopped");
+    if (options.reason) state.lastError = options.reason;
     return true;
   }
 
   function status() {
     return {
       running: state.running,
+      monitorOnly: state.monitorOnly,
       config: { ...config },
       stats: readStats(),
+      lastResult: state.lastResult,
+      lastDecision: state.lastDecision,
+      lastAction: state.lastAction,
+      lastError: state.lastError,
+      failedAttempts: state.failedAttempts,
+      pendingHpAttempt: state.pendingAttempt?.kind === "hp" ? { ...state.pendingAttempt } : null,
+      pendingManaAttempt: state.pendingAttempt?.kind === "mana" ? { ...state.pendingAttempt } : null,
       lastHpHealAt: state.lastHpHealAt,
       lastManaHealAt: state.lastManaHealAt,
       lastHpAttemptAt: state.lastHpAttemptAt,
       lastManaAttemptAt: state.lastManaAttemptAt,
-      pendingHpAttempt: state.pendingHpAttempt ? { ...state.pendingHpAttempt } : null,
-      pendingManaAttempt: state.pendingManaAttempt ? { ...state.pendingManaAttempt } : null,
     };
   }
 
-  function updateConfig(nextConfig = {}) {
-    if (Object.prototype.hasOwnProperty.call(nextConfig, "hpHotbarSlot")) {
-      nextConfig.hpHotbarSlot = normalizeHotbarSlot(nextConfig.hpHotbarSlot) ?? config.hpHotbarSlot;
+  function updateConfig(next = {}) {
+    const patch = { ...next };
+    for (const prop of ["hpHotbarSlot", "manaHotbarSlot"]) {
+      if (Object.prototype.hasOwnProperty.call(patch, prop)) {
+        patch[prop] = normalizeHotbarSlot(patch[prop]) ?? config[prop];
+      }
     }
-
-    if (Object.prototype.hasOwnProperty.call(nextConfig, "manaHotbarSlot")) {
-      nextConfig.manaHotbarSlot = normalizeHotbarSlot(nextConfig.manaHotbarSlot) ?? config.manaHotbarSlot;
+    for (const prop of ["minHp", "minMana"]) {
+      if (Object.prototype.hasOwnProperty.call(patch, prop)) {
+        patch[prop] = Math.max(0, Number(patch[prop]) || 0);
+      }
     }
-
-    if (Object.prototype.hasOwnProperty.call(nextConfig, "minHp")) {
-      nextConfig.minHp = Math.max(0, Number(nextConfig.minHp) || 0);
+    if (Object.prototype.hasOwnProperty.call(patch, "minHpPercent")) {
+      patch.minHpPercent = Math.min(100, Math.max(0, Number(patch.minHpPercent) || 0));
     }
-
-    if (Object.prototype.hasOwnProperty.call(nextConfig, "minMana")) {
-      nextConfig.minMana = Math.max(0, Number(nextConfig.minMana) || 0);
+    if (Object.prototype.hasOwnProperty.call(patch, "minManaPercent")) {
+      patch.minManaPercent = Math.min(100, Math.max(0, Number(patch.minManaPercent) || 0));
     }
-
-    if (Object.prototype.hasOwnProperty.call(nextConfig, "healRetryMs")) {
-      nextConfig.healRetryMs = Math.max(50, Number(nextConfig.healRetryMs) || 50);
+    if (Object.prototype.hasOwnProperty.call(patch, "manaEnabled")) {
+      patch.manaEnabled = !!patch.manaEnabled;
     }
-
-    if (Object.prototype.hasOwnProperty.call(nextConfig, "healConfirmMs")) {
-      nextConfig.healConfirmMs = Math.max(50, Number(nextConfig.healConfirmMs) || 50);
+    for (const [prop, floor] of [
+      ["tickMs", 250], ["healCooldownMs", 3000],
+      ["healRetryMs", 200], ["healConfirmMs", 1200]
+    ]) {
+      if (Object.prototype.hasOwnProperty.call(patch, prop)) {
+        patch[prop] = Math.max(floor, Number(patch[prop]) || floor);
+      }
     }
-
-    Object.assign(config, nextConfig);
+    Object.assign(config, patch);
     persistConfig();
-    bot.log("auto heal config updated", { ...config });
     return { ...config };
   }
 
-  if (config.enabled) {
-    start();
-  }
-
   bot.heal = {
-    start,
-    stop,
-    status,
-    updateConfig,
-    readStats,
-    tryHeal,
-    canUseHpHeal,
-    canUseManaHeal,
-    triggerHpHeal,
-    triggerManaHeal,
-    normalizeHotbarSlot,
-    config,
+    start, stop, status, updateConfig, readStats, evaluateDom, tryHeal,
+    canUseHpHeal, canUseManaHeal, triggerHpHeal, triggerManaHeal,
+    normalizeHotbarSlot, config,
+    // Alias de compatibilidad: todos usan un único temporizador.
+    domMonitor: {
+      start: startMonitor,
+      stop,
+      check: () => evaluateDom(),
+      status: () => ({ ...status(), running: state.running }),
+    },
+    autoDomHeal: { start, stop, status },
   };
+
+  if (typeof bot.addCleanup === "function") {
+    bot.addCleanup(() => stop({ persistEnabled: false }));
+  }
+  // No autoencender tras recompilar: verificar personaje y ranuras al iniciar manualmente.
+  if (config.enabled) {
+    config.enabled = false;
+    persistConfig();
+  }
 };
 window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
@@ -11533,9 +11564,20 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
 
   function refreshAutoHealStatus() {
     const autoHealToggle = document.getElementById("minibia-copilot-auto-heal-enabled");
-    if (!autoHealToggle) return;
+    const statusLabel = document.getElementById("minibia-copilot-auto-heal-status");
+    const status = bot.heal?.status?.();
 
-    autoHealToggle.checked = !!bot.heal?.status?.().running;
+    if (autoHealToggle) autoHealToggle.checked = !!status?.running && !status?.monitorOnly;
+    if (!statusLabel) return;
+
+    const hp = status?.stats?.hp;
+    const mana = status?.stats?.manaPercent;
+    const hpLabel = hp ? `${hp.current}/${hp.max} (${((hp.current / hp.max) * 100).toFixed(1)}%)` : "sin datos";
+    const manaLabel = Number.isFinite(mana) ? `${mana}%` : "sin datos";
+    const mode = !status?.running ? "Detenido" : status.monitorOnly ? "Solo monitor" : "Activo";
+    const name = status?.stats?.name || "Sin personaje identificado";
+    statusLabel.textContent = `${mode} | ${name} | HP: ${hpLabel} | Maná: ${manaLabel} | Cura al ${status?.config?.minHpPercent ?? 60}% (F${status?.config?.hpHotbarSlot ?? 1})` +
+      (status?.lastError ? ` | Error: ${status.lastError}` : "");
   }
 
   function refreshAutoInvisibleStatus() {
@@ -13636,23 +13678,54 @@ function refreshAntiBotStatus() {
               </label>
               <div class="mc-field-grid">
                 <label class="mc-field" for="minibia-copilot-auto-heal-min-hp">
-                  <span class="mc-field-label">HP:</span>
-                  <input type="number" id="minibia-copilot-auto-heal-min-hp" min="0" placeholder="250" />
+                  <span class="mc-field-label">Curar al llegar a vida (%):</span>
+                  <input type="number" id="minibia-copilot-auto-heal-min-hp" min="0" max="100" step="1" placeholder="60" />
                 </label>
                 <label class="mc-field" for="minibia-copilot-auto-heal-hp-hotkey">
-                  <span class="mc-field-label">HP Hotkey (1-12)</span>
-                  <input type="number" id="minibia-copilot-auto-heal-hp-hotkey" min="1" max="12" placeholder="1" />
+                  <span class="mc-field-label">Tecla de curación</span>
+                  <select id="minibia-copilot-auto-heal-hp-hotkey">
+                    <option value="1">F1</option>
+                    <option value="2">F2</option>
+                    <option value="3">F3</option>
+                    <option value="4">F4</option>
+                    <option value="5">F5</option>
+                    <option value="6">F6</option>
+                    <option value="7">F7</option>
+                    <option value="8">F8</option>
+                    <option value="9">F9</option>
+                    <option value="10">F10</option>
+                    <option value="11">F11</option>
+                    <option value="12">F12</option>
+                  </select>
                 </label>
                 <label class="mc-field" for="minibia-copilot-auto-heal-min-mana">
-                  <span class="mc-field-label">Mana:</span>
-                  <input type="number" id="minibia-copilot-auto-heal-min-mana" min="0" placeholder="150" />
+                  <span class="mc-field-label">Mana (%):</span>
+                  <input type="number" id="minibia-copilot-auto-heal-min-mana" min="0" max="100" placeholder="25" />
                 </label>
                 <label class="mc-field" for="minibia-copilot-auto-heal-mana-hotkey">
-                  <span class="mc-field-label">Mana Hotkey (1-12)</span>
-                  <input type="number" id="minibia-copilot-auto-heal-mana-hotkey" min="1" max="12" placeholder="2" />
+                  <span class="mc-field-label">Tecla de maná</span>
+                  <select id="minibia-copilot-auto-heal-mana-hotkey">
+                    <option value="1">F1</option>
+                    <option value="2">F2</option>
+                    <option value="3">F3</option>
+                    <option value="4">F4</option>
+                    <option value="5">F5</option>
+                    <option value="6">F6</option>
+                    <option value="7">F7</option>
+                    <option value="8">F8</option>
+                    <option value="9">F9</option>
+                    <option value="10">F10</option>
+                    <option value="11">F11</option>
+                    <option value="12">F12</option>
+                  </select>
                 </label>
               </div>
-              <div class="mc-small-note">El HP se cura antes que el mana.</div>
+              <label class="mc-toggle">
+                <input type="checkbox" id="minibia-copilot-auto-heal-mana-enabled" />
+                <span>Usar pociones de maná (opcional)</span>
+              </label>
+              <div class="mc-small-note">Personaje: detección automática. Las teclas elegidas deben contener "Use Item". HP tiene prioridad.</div>
+              <div class="mc-small-note" id="minibia-copilot-auto-heal-status">Estado: esperando datos</div>
             </div>
           </div>
 
@@ -13982,6 +14055,7 @@ function refreshAntiBotStatus() {
     const autoHealMinHpInput = panel.querySelector("#minibia-copilot-auto-heal-min-hp");
     const autoHealHpHotkeyInput = panel.querySelector("#minibia-copilot-auto-heal-hp-hotkey");
     const autoHealMinManaInput = panel.querySelector("#minibia-copilot-auto-heal-min-mana");
+    const autoHealManaEnabledInput = panel.querySelector("#minibia-copilot-auto-heal-mana-enabled");
     const autoHealManaHotkeyInput = panel.querySelector("#minibia-copilot-auto-heal-mana-hotkey");
     const autoAttackEnabledInput = panel.querySelector("#minibia-copilot-auto-attack-enabled");
     const autoAttackMeleeInput = panel.querySelector("#minibia-copilot-auto-attack-melee");
@@ -14617,11 +14691,11 @@ function refreshAntiBotStatus() {
     }
 
     if (autoHealMinHpInput) {
-      autoHealMinHpInput.value = String(bot.heal?.config?.minHp ?? 0);
+      autoHealMinHpInput.value = String(bot.heal?.config?.minHpPercent ?? 60);
       autoHealMinHpInput.addEventListener("change", () => {
-        const minHp = Math.max(0, Number(autoHealMinHpInput.value) || 0);
-        autoHealMinHpInput.value = String(minHp);
-        bot.heal.updateConfig({ minHp });
+        const minHpPercent = Math.min(100, Math.max(0, Number(autoHealMinHpInput.value) || 0));
+        autoHealMinHpInput.value = String(minHpPercent);
+        bot.heal.updateConfig({ minHpPercent });
       });
     }
 
@@ -14635,11 +14709,18 @@ function refreshAntiBotStatus() {
     }
 
     if (autoHealMinManaInput) {
-      autoHealMinManaInput.value = String(bot.heal?.config?.minMana ?? 0);
+      autoHealMinManaInput.value = String(bot.heal?.config?.minManaPercent ?? 25);
       autoHealMinManaInput.addEventListener("change", () => {
-        const minMana = Math.max(0, Number(autoHealMinManaInput.value) || 0);
-        autoHealMinManaInput.value = String(minMana);
-        bot.heal.updateConfig({ minMana });
+        const minManaPercent = Math.min(100, Math.max(0, Number(autoHealMinManaInput.value) || 0));
+        autoHealMinManaInput.value = String(minManaPercent);
+        bot.heal.updateConfig({ minManaPercent });
+      });
+    }
+
+    if (autoHealManaEnabledInput) {
+      autoHealManaEnabledInput.checked = !!bot.heal?.config?.manaEnabled;
+      autoHealManaEnabledInput.addEventListener("change", () => {
+        bot.heal.updateConfig({ manaEnabled: autoHealManaEnabledInput.checked });
       });
     }
 
@@ -14655,19 +14736,24 @@ function refreshAntiBotStatus() {
     if (autoHealEnabledInput) {
       autoHealEnabledInput.checked = !!bot.heal?.status?.().running;
       autoHealEnabledInput.addEventListener("change", () => {
-        const minHp = Math.max(0, Number(autoHealMinHpInput?.value) || bot.heal.config.minHp || 0);
+        const minHpPercent = Math.min(100, Math.max(0,
+          Number(autoHealMinHpInput?.value ?? bot.heal.config.minHpPercent)
+        ));
         const hpHotbarSlot = Math.min(
           12,
           Math.max(1, Number(autoHealHpHotkeyInput?.value) || bot.heal.config.hpHotbarSlot || 1)
         );
-        const minMana = Math.max(0, Number(autoHealMinManaInput?.value) || bot.heal.config.minMana || 0);
+        const minManaPercent = Math.min(100, Math.max(0,
+          Number(autoHealMinManaInput?.value ?? bot.heal.config.minManaPercent)
+        ));
+        const manaEnabled = !!autoHealManaEnabledInput?.checked;
         const manaHotbarSlot = Math.min(
           12,
           Math.max(1, Number(autoHealManaHotkeyInput?.value) || bot.heal.config.manaHotbarSlot || 1)
         );
 
         if (autoHealEnabledInput.checked) {
-          bot.heal.start({ minHp, hpHotbarSlot, minMana, manaHotbarSlot });
+          bot.heal.start({ minHpPercent, hpHotbarSlot, minManaPercent, manaEnabled, manaHotbarSlot });
         } else {
           bot.heal.stop();
         }
@@ -14927,6 +15013,7 @@ function refreshAntiBotStatus() {
       refreshStatusPillbar();
       refreshHuntStatus();
       refreshLootbagStatus();
+      refreshAutoHealStatus();
     }, 1000);
     bot.addCleanup(() => {
       window.clearInterval(snapshotTimerId);
