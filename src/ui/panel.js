@@ -2582,8 +2582,6 @@ function refreshAntiBotStatus() {
             <div class="mc-heal-rule">
               <div class="mc-heal-rule-head">Comida automática</div>
               <div class="mc-field-grid">
-                <div class="mc-field">
-                </div>
                 <label class="mc-field" for="minibia-copilot-auto-eat-hotkey">
                   <span class="mc-field-label">Tecla de comida</span>
                   <select id="minibia-copilot-auto-eat-hotkey">
