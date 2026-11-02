@@ -12,7 +12,7 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
     minHp: 250,               // Campo antiguo, conservado para compatibilidad.
     minHpPercent: 60,         // Porcentaje real que controla Auto Heal.
     hpHotbarSlot: 1,
-    healMode: "potion",         // potion: Use Item; spell: magia en hotbar.
+    healMode: "auto",           // auto: detecta poción o magia curativa en la tecla.
     minMana: 150,              // Conservado para compatibilidad; requiere maná absoluto.
     minManaPercent: 25,        // El Runtime Adapter actual solo proporciona porcentaje.
     manaEnabled: false,        // Evita consumir pociones de maná sin autorización explícita.
@@ -21,7 +21,7 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
   };
 
   const config = Object.assign({}, defaults, bot.storage.get(configStorageKey, {}) || {});
-  config.healMode = config.healMode === "spell" ? "spell" : "potion";
+  config.healMode = ["auto", "potion", "spell"].includes(config.healMode) ? config.healMode : "auto";
   const state = {
     running: false,
     monitorOnly: false,
@@ -48,7 +48,7 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
   }
 
   function normalizeHealMode(value) {
-    return value === "spell" ? "spell" : "potion";
+    return ["auto", "potion", "spell"].includes(value) ? value : "auto";
   }
 
   function boundedNumber(value, min, max) {
@@ -127,17 +127,32 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
     return style.display !== "none" && style.visibility !== "hidden";
   }
 
-  function matchesHealMode(node, mode) {
-    const title = String(node.getAttribute("title") || "").trim();
-    if (mode === "spell") {
-      // Solo permitir acciones identificadas explícitamente como hechizos.
-      // No suponer que cualquier botón distinto de Use Item es un hechizo.
-      return /spell|hechizo|magia|cast/i.test(title);
-    }
-    return title === "Use Item";
+  // Inspecciona el texto que Minibia publica en el propio botón.
+  // No mantiene una lista de magias y no lee GameClient ni propiedades protegidas.
+  // Si no hay evidencia de curación, no selecciona el botón automáticamente.
+  function detectHotbarAction(node) {
+    const title = String(node?.getAttribute("title") || "").trim();
+    if (title === "Use Item") return "potion";
+    if (!title) return null;
+
+    // Ejemplos aceptados: "Ultimate Healing: Heals all damage",
+    // "Exura Vita: Restores health", "Curación: Recupera vida".
+    // Excluye etiquetas que indiquen un objeto o una acción ofensiva.
+    const healingText = /\bheal(?:s|ed|ing)?\b|\b(?:restor(?:e|es|ed|ing)|recover(?:s|ed|ing)?|regenerat(?:e|es|ed|ing))\s+(?:hp|health|life)\b|\bexura\b|\bcuraci[oó]n\b|\bcura(?:r)?\b|\b(?:recupera|restaura)(?:r)?\s+vida\b/i;
+    const negativeText = /\b(?:deal(?:s)?\s+damage|damage\s+to|attack|fireball|summon|teleport)\b/i;
+
+    return healingText.test(title) && !negativeText.test(title)
+      ? "spell"
+      : null;
   }
 
-  function findHotbarButton(slot, mode = "potion") {
+  function matchesHealMode(node, mode) {
+    const detected = detectHotbarAction(node);
+    return detected !== null &&
+      (mode === "auto" || detected === mode);
+  }
+
+  function findHotbarButton(slot, mode = "auto") {
     const normalized = normalizeHotbarSlot(slot);
     if (!normalized) return null;
     const hotkey = "F" + normalized;
@@ -159,6 +174,8 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
         key: "F" + normalized,
         title: node.getAttribute("title"),
         text: node.textContent?.trim().slice(0, 90) || "",
+        detectedType: detectHotbarAction(node),
+        autoSupported: matchesHealMode(node, "auto"),
         potionSupported: matchesHealMode(node, "potion"),
         spellSupported: matchesHealMode(node, "spell"),
       }));
@@ -170,13 +187,16 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
   }
 
   function attempt(kind, slot, stats, now) {
-    const actionType = kind === "hp"
+    const selectedMode = kind === "hp"
       ? normalizeHealMode(config.healMode)
       : "potion";
-    const button = findHotbarButton(slot, actionType);
+    const button = findHotbarButton(slot, selectedMode);
+    const actionType = kind === "hp"
+      ? detectHotbarAction(button)
+      : "potion";
     if (!button) {
       stop({ reason: "No hay un único botón de " +
-        (actionType === "spell" ? "magia" : "poción") +
+        (selectedMode === "auto" ? "curación" : selectedMode === "spell" ? "magia" : "poción") +
         " compatible con F" + slot +
         ". Inspecciona el slot con heal.inspectHotbarSlot(" + slot + ")." });
       return false;
@@ -272,7 +292,7 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
       stats.hp && stats.hp.current > 0 && stats.hp.current < stats.hp.max &&
       (stats.hp.current / stats.hp.max) * 100 <= limit &&
       normalizeHotbarSlot(config.hpHotbarSlot) &&
-      !(normalizeHealMode(config.healMode) === "spell" && stats.manaPercent === 0) &&
+      !(detectHotbarAction(findHotbarButton(config.hpHotbarSlot, normalizeHealMode(config.healMode))) === "spell" && stats.manaPercent === 0) &&
       !state.pendingAttempt &&
       now - state.lastHpAttemptAt >= Math.max(3000, Number(config.healCooldownMs) || 0)
     );
@@ -340,13 +360,13 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
       state.lastError = "No hay HP válido en Runtime Adapter";
       return false;
     }
-    const actionType = normalizeHealMode(config.healMode);
-    if (!findHotbarButton(config.hpHotbarSlot, actionType)) {
+    const selectedMode = normalizeHealMode(config.healMode);
+    if (!findHotbarButton(config.hpHotbarSlot, selectedMode)) {
       config.enabled = false;
       persistConfig();
       state.lastError = "F" + config.hpHotbarSlot +
         " no tiene un control compatible con " +
-        (actionType === "spell" ? "Magia" : "Poción") +
+        (selectedMode === "auto" ? "Auto" : selectedMode === "spell" ? "Magia" : "Poción") +
         ". Consulta heal.inspectHotbarSlot(" + config.hpHotbarSlot + ").";
       return false;
     }
@@ -399,6 +419,7 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
       running: state.running,
       monitorOnly: state.monitorOnly,
       config: { ...config },
+      detectedHealType: detectHotbarAction(findHotbarButton(config.hpHotbarSlot, "auto")),
       stats: readStats(),
       lastResult: state.lastResult,
       lastDecision: state.lastDecision,
