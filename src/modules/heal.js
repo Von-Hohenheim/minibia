@@ -12,7 +12,10 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
     minHp: 250,               // Campo antiguo, conservado para compatibilidad.
     minHpPercent: 60,         // Porcentaje real que controla Auto Heal.
     hpHotbarSlot: 1,
-    healMode: "auto",           // auto: detecta poción o magia curativa en la tecla.
+    // Dos reglas de HP; el selector de tipo ya no existe.
+    priorityHealEnabled: false,  // La regla prioritaria se activa explícitamente.
+    priorityHpPercent: 35,
+    priorityHotbarSlot: 3,
     minMana: 150,              // Conservado para compatibilidad; requiere maná absoluto.
     minManaPercent: 25,        // El Runtime Adapter actual solo proporciona porcentaje.
     manaEnabled: false,        // Evita consumir pociones de maná sin autorización explícita.
@@ -21,7 +24,8 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
   };
 
   const config = Object.assign({}, defaults, bot.storage.get(configStorageKey, {}) || {});
-  config.healMode = ["auto", "potion", "spell"].includes(config.healMode) ? config.healMode : "auto";
+  // Limpiar la configuración obsoleta de V4.
+  delete config.healMode;
   const state = {
     running: false,
     monitorOnly: false,
@@ -45,10 +49,6 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
   function normalizeHotbarSlot(value) {
     const slot = Number(value);
     return Number.isInteger(slot) && slot >= 1 && slot <= 12 ? slot : null;
-  }
-
-  function normalizeHealMode(value) {
-    return ["auto", "potion", "spell"].includes(value) ? value : "auto";
   }
 
   function boundedNumber(value, min, max) {
@@ -84,13 +84,24 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
     };
   }
 
-  function evaluateDom(stats = readStats()) {
-    const hpLimit = Math.min(100, Math.max(0, Number(config.minHpPercent) || 0));
-    const hpPercent = stats.hp ? (stats.hp.current / stats.hp.max) * 100 : null;
-    const hpRequired = stats.hp
-      ? stats.hp.current > 0 && stats.hp.current < stats.hp.max && hpPercent <= hpLimit
-      : null;
+  function hpPercent(stats) {
+    return stats.hp ? (stats.hp.current / stats.hp.max) * 100 : null;
+  }
 
+  function hpRules(stats) {
+    const percent = hpPercent(stats);
+    const valid = percent !== null && stats.hp.current > 0 && stats.hp.current < stats.hp.max;
+    const normalLimit = Math.min(100, Math.max(0, Number(config.minHpPercent) || 0));
+    const priorityLimit = Math.min(100, Math.max(0, Number(config.priorityHpPercent) || 0));
+    return {
+      normal: valid && percent <= normalLimit,
+      priority: valid && !!config.priorityHealEnabled && percent <= priorityLimit,
+    };
+  }
+
+  function evaluateDom(stats = readStats()) {
+    const rules = hpRules(stats);
+    const hpRequired = stats.hp ? rules.normal || rules.priority : null;
     let manaRequired = null;
     if (config.manaEnabled) {
       if (stats.manaPercent !== null) {
@@ -99,21 +110,22 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
         manaRequired = stats.mana.current <= Math.max(0, Number(config.minMana) || 0);
       }
     }
-
     return {
       available: !!stats.hp,
       name: stats.name,
       health: stats.hp?.current ?? null,
       maxHealth: stats.hp?.max ?? null,
-      healthPercent: stats.hp
-        ? Math.round((stats.hp.current / stats.hp.max) * 10000) / 100 : null,
+      healthPercent: stats.hp ? Math.round(hpPercent(stats) * 100) / 100 : null,
       mana: stats.mana?.current ?? null,
       maxMana: stats.mana?.max ?? null,
       manaPercent: stats.manaPercent,
-      minHpPercent: hpLimit,
-      healMode: normalizeHealMode(config.healMode),
-      minHp: config.minHp, // Compatibilidad, no controla el disparador.
-      minManaPercent: config.minManaPercent,
+      minHpPercent: config.minHpPercent,
+      priorityHealEnabled: !!config.priorityHealEnabled,
+      priorityHpPercent: config.priorityHpPercent,
+      normalHotbarSlot: config.hpHotbarSlot,
+      priorityHotbarSlot: config.priorityHotbarSlot,
+      shouldHealNormal: stats.hp ? rules.normal : null,
+      shouldHealPriority: stats.hp ? rules.priority : null,
       shouldHeal: hpRequired,
       shouldRefillMana: manaRequired,
       actionExecuted: false,
@@ -143,13 +155,12 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
 
     return healingText.test(title) && !negativeText.test(title)
       ? "spell"
-      : null; 
+      : null;
   }
 
-  function matchesHealMode(node, mode) {
+  function matchesHealMode(node, mode = "auto") {
     const detected = detectHotbarAction(node);
-    return detected !== null &&
-      (mode === "auto" || detected === mode);
+    return detected !== null && (mode === "auto" || detected === mode);
   }
 
   function findHotbarButton(slot, mode = "auto") {
@@ -186,23 +197,15 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
     return typeof value === "string" && /^\d+$/.test(value) ? Number(value) : null;
   }
 
-  function attempt(kind, slot, stats, now) {
-    const selectedMode = kind === "hp"
-      ? normalizeHealMode(config.healMode)
-      : "potion";
-    const button = findHotbarButton(slot, selectedMode);
-    const actionType = kind === "hp"
-      ? detectHotbarAction(button)
-      : "potion";
+  function attempt(kind, slot, stats, now, rule = null) {
+    const button = findHotbarButton(slot, kind === "hp" ? "auto" : "potion");
+    const actionType = button ? detectHotbarAction(button) : null;
     if (!button) {
-      stop({ reason: "No hay un único botón de " +
-        (selectedMode === "auto" ? "curación" : selectedMode === "spell" ? "magia" : "poción") +
-        " compatible con F" + slot +
-        ". Inspecciona el slot con heal.inspectHotbarSlot(" + slot + ")." });
+      stop({ reason: "F" + slot + " no tiene un botón compatible y único. Consulta heal.inspectHotbarSlot(" + slot + ")." });
       return false;
     }
 
-    // Las magias no consumen ítems; confirmar por variación de HP.
+    // 'Use Item' es ambiguo: puede ser poción o runa. Debe estar configurado para curarse a sí mismo.
     const countBefore = actionType === "potion" ? readItemCount(button) : null;
     if (actionType === "potion" && countBefore === 0) {
       stop({ reason: "No quedan objetos en F" + slot });
@@ -211,6 +214,7 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
 
     state.pendingAttempt = {
       kind,
+      rule,
       slot,
       actionType,
       buttonTitle: button.getAttribute("title"),
@@ -220,7 +224,6 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
       manaPercentBefore: stats.manaPercent,
       countBefore,
     };
-
     if (kind === "hp") state.lastHpAttemptAt = now;
     else state.lastManaAttemptAt = now;
 
@@ -259,6 +262,7 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
 
     state.lastAction = {
       kind: pending.kind,
+      rule: pending.rule,
       slot: pending.slot,
       actionType: pending.actionType,
       buttonTitle: pending.buttonTitle,
@@ -286,16 +290,32 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
     return false;
   }
 
+  // La prioridad no depende del orden de los cuadros: la regla de emergencia
+  // siempre se evalúa primero. Si una magia no tiene maná (0%), se prueba la normal.
+  function selectHpRule(now, stats) {
+    if (!stats.hp || stats.hp.current <= 0 || stats.hp.current >= stats.hp.max ||
+        state.pendingAttempt ||
+        now - state.lastHpAttemptAt < Math.max(3000, Number(config.healCooldownMs) || 0)) {
+      return null;
+    }
+
+    const rules = hpRules(stats);
+    const candidates = [
+      { name: "priority", eligible: rules.priority, slot: config.priorityHotbarSlot },
+      { name: "normal", eligible: rules.normal, slot: config.hpHotbarSlot },
+    ];
+    for (const rule of candidates) {
+      if (!rule.eligible || !normalizeHotbarSlot(rule.slot)) continue;
+      const button = findHotbarButton(rule.slot, "auto");
+      // Cuando hay datos de maná y llega a cero, omitir magias; permitir ítems de curación.
+      if (button && detectHotbarAction(button) === "spell" && stats.manaPercent === 0) continue;
+      return rule;
+    }
+    return null;
+  }
+
   function canUseHpHeal(now = Date.now(), stats = readStats()) {
-    const limit = Math.min(100, Math.max(0, Number(config.minHpPercent) || 0));
-    return !!(
-      stats.hp && stats.hp.current > 0 && stats.hp.current < stats.hp.max &&
-      (stats.hp.current / stats.hp.max) * 100 <= limit &&
-      normalizeHotbarSlot(config.hpHotbarSlot) &&
-      !(detectHotbarAction(findHotbarButton(config.hpHotbarSlot, normalizeHealMode(config.healMode))) === "spell" && stats.manaPercent === 0) &&
-      !state.pendingAttempt &&
-      now - state.lastHpAttemptAt >= Math.max(3000, Number(config.healCooldownMs) || 0)
-    );
+    return !!selectHpRule(now, stats);
   }
 
   function canUseManaHeal(now = Date.now(), stats = readStats()) {
@@ -310,7 +330,8 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
   }
 
   function triggerHpHeal(now = Date.now(), stats = readStats()) {
-    return canUseHpHeal(now, stats) && attempt("hp", config.hpHotbarSlot, stats, now);
+    const rule = selectHpRule(now, stats);
+    return !!rule && attempt("hp", rule.slot, stats, now, rule.name);
   }
 
   function triggerManaHeal(now = Date.now(), stats = readStats()) {
@@ -360,17 +381,30 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
       state.lastError = "No hay HP válido en Runtime Adapter";
       return false;
     }
-    const selectedMode = normalizeHealMode(config.healMode);
-    if (!findHotbarButton(config.hpHotbarSlot, selectedMode)) {
+    if (!findHotbarButton(config.hpHotbarSlot, "auto")) {
       config.enabled = false;
       persistConfig();
-      state.lastError = "F" + config.hpHotbarSlot +
-        " no tiene un control compatible con " +
-        (selectedMode === "auto" ? "Auto" : selectedMode === "spell" ? "Magia" : "Poción") +
-        ". Consulta heal.inspectHotbarSlot(" + config.hpHotbarSlot + ").";
+      state.lastError = "F" + config.hpHotbarSlot + " no contiene una curación reconocible y única";
       return false;
     }
-    if (config.manaEnabled && config.manaHotbarSlot === config.hpHotbarSlot) {
+    if (config.priorityHealEnabled) {
+      if (config.priorityHotbarSlot === config.hpHotbarSlot) {
+        config.enabled = false;
+        persistConfig();
+        state.lastError = "La curación normal y la prioritaria deben utilizar teclas diferentes";
+        return false;
+      }
+      if (!findHotbarButton(config.priorityHotbarSlot, "auto")) {
+        config.enabled = false;
+        persistConfig();
+        state.lastError = "F" + config.priorityHotbarSlot + " no contiene una curación prioritaria reconocible y única";
+        return false;
+      }
+    }
+    if (config.manaEnabled && (
+      config.manaHotbarSlot === config.hpHotbarSlot ||
+      (config.priorityHealEnabled && config.manaHotbarSlot === config.priorityHotbarSlot)
+    )) {
       config.enabled = false;
       persistConfig();
       state.lastError = "Configura teclas diferentes para curación y maná";
@@ -420,6 +454,9 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
       monitorOnly: state.monitorOnly,
       config: { ...config },
       detectedHealType: detectHotbarAction(findHotbarButton(config.hpHotbarSlot, "auto")),
+      detectedPriorityHealType: config.priorityHealEnabled
+        ? detectHotbarAction(findHotbarButton(config.priorityHotbarSlot, "auto"))
+        : null,
       stats: readStats(),
       lastResult: state.lastResult,
       lastDecision: state.lastDecision,
@@ -437,7 +474,9 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
 
   function updateConfig(next = {}) {
     const patch = { ...next };
-    for (const prop of ["hpHotbarSlot", "manaHotbarSlot"]) {
+    // healMode ya no se configura: todas las reglas detectan automáticamente.
+    delete patch.healMode;
+    for (const prop of ["hpHotbarSlot", "priorityHotbarSlot", "manaHotbarSlot"]) {
       if (Object.prototype.hasOwnProperty.call(patch, prop)) {
         patch[prop] = normalizeHotbarSlot(patch[prop]) ?? config[prop];
       }
@@ -447,11 +486,13 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
         patch[prop] = Math.max(0, Number(patch[prop]) || 0);
       }
     }
-    if (Object.prototype.hasOwnProperty.call(patch, "healMode")) {
-      patch.healMode = normalizeHealMode(patch.healMode);
+    for (const prop of ["minHpPercent", "priorityHpPercent"]) {
+      if (Object.prototype.hasOwnProperty.call(patch, prop)) {
+        patch[prop] = Math.min(100, Math.max(0, Number(patch[prop]) || 0));
+      }
     }
-    if (Object.prototype.hasOwnProperty.call(patch, "minHpPercent")) {
-      patch.minHpPercent = Math.min(100, Math.max(0, Number(patch.minHpPercent) || 0));
+    if (Object.prototype.hasOwnProperty.call(patch, "priorityHealEnabled")) {
+      patch.priorityHealEnabled = !!patch.priorityHealEnabled;
     }
     if (Object.prototype.hasOwnProperty.call(patch, "minManaPercent")) {
       patch.minManaPercent = Math.min(100, Math.max(0, Number(patch.minManaPercent) || 0));
