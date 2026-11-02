@@ -67,7 +67,10 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     };
 
     if (overlayButton) {
-      overlayButton.textContent = status?.config?.overlayEnabled ? "Disable Overlay" : "Enable Overlay";
+      overlayButton.textContent = !status?.dataAvailable
+        ? "X-Ray sin coordenadas"
+        : (status?.config?.overlayEnabled ? "Disable Overlay" : "Enable Overlay");
+      overlayButton.disabled = !status?.dataAvailable;
     }
     if (overlayLabel) {
       const active = status?.overlayRunning ? "on" : "off";
@@ -76,7 +79,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
       const source = status?.dataSource || "unavailable";
       const count = status?.visibleCreatures?.length ?? 0;
       overlayLabel.textContent = !status?.dataAvailable
-        ? `Overlay: ${active} · Sin coordenadas de criaturas (${source}). Ejecuta minibiaCopilot.xray.inspectSources()`
+        ? `X-Ray sin coordenadas (${source}) · Battle List: ${status?.battleListCreatures?.length ?? 0} entradas visibles`
         : `Overlay: ${active} · ${floorLabel} · ${count} criaturas · ${source}`;
       if (status?.dataError) overlayLabel.textContent += ` · ${status.dataError}`;
     }
@@ -1103,10 +1106,44 @@ function refreshAntiBotStatus() {
     list.innerHTML = "";
 
     if (!me) {
-      const empty = document.createElement("div");
-      empty.className = "mc-small-note";
-      empty.textContent = "Sin coordenadas del personaje. Ejecuta minibiaCopilot.xray.inspectSources() en la consola.";
-      list.appendChild(empty);
+      const note = document.createElement("div");
+      note.className = "mc-small-note";
+      note.textContent = "Modo Battle List (solo visibles): nombres y HP. No detecta criaturas ocultas ni otros pisos; faltan coordenadas.";
+      list.appendChild(note);
+
+      const entries = status?.battleListCreatures || [];
+      if (!status?.battleListWindowVisible) {
+        const hint = document.createElement("div");
+        hint.className = "mc-small-note";
+        hint.textContent = "Abre la ventana Battle para mostrar las entradas disponibles.";
+        list.appendChild(hint);
+      } else if (!entries.length) {
+        const hint = document.createElement("div");
+        hint.className = "mc-small-note";
+        hint.textContent = "Battle List no muestra criaturas en este momento.";
+        list.appendChild(hint);
+      } else {
+        entries.forEach((entry) => {
+          const row = document.createElement("div");
+          row.className = "mc-creature-row";
+
+          const name = document.createElement("div");
+          name.className = "mc-creature-name";
+          name.textContent = entry.name;
+          row.appendChild(name);
+
+          const meta = document.createElement("div");
+          meta.className = "mc-small-note";
+          const info = [
+            entry.detail,
+            entry.healthText ? `${entry.healthText} HP` : null,
+            `ID ${entry.id}`,
+          ].filter(Boolean);
+          meta.textContent = info.join(" · ");
+          row.appendChild(meta);
+          list.appendChild(row);
+        });
+      }
       return;
     }
 

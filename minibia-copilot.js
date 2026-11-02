@@ -1499,6 +1499,67 @@ window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot
     return { playerPosition, creatures };
   }
 
+
+  // Fuente de compatibilidad: solo entradas ya visibles en la interfaz Battle List.
+  // NO ofrece coordenadas, pisos ni criaturas no mostradas por el juego.
+  // Se mantiene independiente de getVisibleCreatures() para no alterar Panic/Attack.
+  function getBattleListSnapshot() {
+    const windowEl = document.querySelector("#battle-window");
+    const windowVisible = !!(windowEl && windowEl.isConnected &&
+      windowEl.getClientRects().length &&
+      window.getComputedStyle(windowEl).visibility !== "hidden" &&
+      window.getComputedStyle(windowEl).display !== "none");
+
+    if (!windowVisible) {
+      return { windowFound: !!windowEl, windowVisible: false, entries: [] };
+    }
+
+    const rows = Array.from(windowEl.querySelectorAll(
+      '.battle-window-target-wrapper[id]'
+    )).slice(0, 200);
+    const seen = new Set();
+    const entries = [];
+    for (const row of rows) {
+      // El cliente utiliza IDs numéricos para las filas reales.
+      const id = String(row.id || "").trim();
+      if (!/^\d+$/.test(id) || seen.has(id) ||
+          !row.isConnected || !row.getClientRects().length) continue;
+      const name = row.querySelector('.battle-window-target-title')?.textContent?.trim() || '';
+      if (!name || name === '???') continue;
+      seen.add(id);
+      const detail = row.querySelector('.battle-window-target-sub')?.textContent?.trim() || '';
+      const rawHealth = row.querySelector('.battle-window-bar-wrapper .bar-text')?.textContent?.trim() || '';
+      const match = rawHealth.match(/^(\d+)\s*\/\s*(\d+)$/);
+      entries.push({
+        id,
+        name,
+        detail,
+        health: match ? Number(match[1]) : null,
+        maxHealth: match ? Number(match[2]) : null,
+        healthText: rawHealth && rawHealth !== '???' ? rawHealth : null,
+        // Sin datos de posición ni clasificación fiable de criatura.
+        position: null,
+        type: null,
+        source: 'battle-list-dom',
+      });
+    }
+    return { windowFound: true, windowVisible: true, entries };
+  }
+
+  function getBattleListCreatures() {
+    return getBattleListSnapshot().entries;
+  }
+
+  function inspectBattleList() {
+    const snapshot = getBattleListSnapshot();
+    return {
+      ...snapshot,
+      count: snapshot.entries.length,
+      hasCoordinates: false,
+      note: 'Solo criaturas mostradas en Battle List; no informa posiciones ni otros pisos.',
+    };
+  }
+
   function normalizeCreatures(input) {
     let values = [];
     if (Array.isArray(input)) values = input;
@@ -1750,6 +1811,7 @@ window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot
       runtimeAdapterStats: !!bot.runtimeAdapter?.getStats?.(),
       runtimeAdapterWorld: typeof bot.runtimeAdapter?.getWorldSnapshot === "function",
       domPositionMarkers: domMarkers,
+      battleListCount: getBattleListSnapshot().entries.length,
       viewportFound: !!getViewportRect(),
       error: state.lastError,
       note: !data.available
@@ -1761,6 +1823,7 @@ window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot
   function status() {
     const data = readSnapshot();
     const me = data.playerPosition;
+    const battleList = getBattleListSnapshot();
     const visible = me ? data.creatures.filter(c => near(me, c.__position)) : [];
     const players = visible.filter(c => c.type === 0);
     const monsters = visible.filter(c => c.type !== 0);
@@ -1771,6 +1834,8 @@ window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot
       visibleMonsters: monsters.map(formatCreature),
       visibleMonstersCurrentFloor: monsters.filter(c => c.__position.z === me?.z).map(formatCreature),
       overlayCreatures: overlayCreaturesFrom(data).map(formatCreature),
+      battleListCreatures: battleList.entries,
+      battleListWindowVisible: battleList.windowVisible,
       playerPosition: me,
       dataSource: data.source,
       dataAvailable: data.available,
@@ -1785,6 +1850,8 @@ window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot
     getVisiblePlayers,
     getVisibleMonsters,
     getOverlayCreatures,
+    getBattleListCreatures,
+    inspectBattleList,
     startOverlay,
     stopOverlay,
     setOverlayEnabled,
@@ -11476,7 +11543,10 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     };
 
     if (overlayButton) {
-      overlayButton.textContent = status?.config?.overlayEnabled ? "Disable Overlay" : "Enable Overlay";
+      overlayButton.textContent = !status?.dataAvailable
+        ? "X-Ray sin coordenadas"
+        : (status?.config?.overlayEnabled ? "Disable Overlay" : "Enable Overlay");
+      overlayButton.disabled = !status?.dataAvailable;
     }
     if (overlayLabel) {
       const active = status?.overlayRunning ? "on" : "off";
@@ -11485,7 +11555,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
       const source = status?.dataSource || "unavailable";
       const count = status?.visibleCreatures?.length ?? 0;
       overlayLabel.textContent = !status?.dataAvailable
-        ? `Overlay: ${active} · Sin coordenadas de criaturas (${source}). Ejecuta minibiaCopilot.xray.inspectSources()`
+        ? `X-Ray sin coordenadas (${source}) · Battle List: ${status?.battleListCreatures?.length ?? 0} entradas visibles`
         : `Overlay: ${active} · ${floorLabel} · ${count} criaturas · ${source}`;
       if (status?.dataError) overlayLabel.textContent += ` · ${status.dataError}`;
     }
@@ -12512,10 +12582,44 @@ function refreshAntiBotStatus() {
     list.innerHTML = "";
 
     if (!me) {
-      const empty = document.createElement("div");
-      empty.className = "mc-small-note";
-      empty.textContent = "Sin coordenadas del personaje. Ejecuta minibiaCopilot.xray.inspectSources() en la consola.";
-      list.appendChild(empty);
+      const note = document.createElement("div");
+      note.className = "mc-small-note";
+      note.textContent = "Modo Battle List (solo visibles): nombres y HP. No detecta criaturas ocultas ni otros pisos; faltan coordenadas.";
+      list.appendChild(note);
+
+      const entries = status?.battleListCreatures || [];
+      if (!status?.battleListWindowVisible) {
+        const hint = document.createElement("div");
+        hint.className = "mc-small-note";
+        hint.textContent = "Abre la ventana Battle para mostrar las entradas disponibles.";
+        list.appendChild(hint);
+      } else if (!entries.length) {
+        const hint = document.createElement("div");
+        hint.className = "mc-small-note";
+        hint.textContent = "Battle List no muestra criaturas en este momento.";
+        list.appendChild(hint);
+      } else {
+        entries.forEach((entry) => {
+          const row = document.createElement("div");
+          row.className = "mc-creature-row";
+
+          const name = document.createElement("div");
+          name.className = "mc-creature-name";
+          name.textContent = entry.name;
+          row.appendChild(name);
+
+          const meta = document.createElement("div");
+          meta.className = "mc-small-note";
+          const info = [
+            entry.detail,
+            entry.healthText ? `${entry.healthText} HP` : null,
+            `ID ${entry.id}`,
+          ].filter(Boolean);
+          meta.textContent = info.join(" · ");
+          row.appendChild(meta);
+          list.appendChild(row);
+        });
+      }
       return;
     }
 
