@@ -2415,7 +2415,7 @@ function refreshAntiBotStatus() {
                     </select>
                   </label>
                 </div>
-                <div class="mc-small-note">Si ambas condiciones se cumplen, se usa primero esta tecla. Recomendado: magia fuerte o UH.</div>
+                <div class="mc-small-note">Si ambas condiciones se cumplen, se usa primero esta tecla.</div>
               </div>
               <div class="mc-field-grid">
                 <label class="mc-field" for="minibia-copilot-auto-heal-min-mana">
@@ -2444,7 +2444,6 @@ function refreshAntiBotStatus() {
                 <input type="checkbox" id="minibia-copilot-auto-heal-mana-enabled" />
                 <span>Usar pociones de maná (opcional)</span>
               </label>
-              <div class="mc-small-note">Personaje detectado automáticamente. Sin selector de tipo: cada tecla se identifica por su título. Curación prioritaria → normal → maná. Verifica que las runas se usen sobre tu personaje.</div>
               <div class="mc-small-note" id="minibia-copilot-auto-heal-status">Estado: esperando datos</div>
             </div>
           </div>
