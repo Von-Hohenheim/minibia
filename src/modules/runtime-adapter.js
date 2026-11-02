@@ -1,183 +1,119 @@
-
- // Minibia Runtime Adapter — lector DOM de estadísticas (solo lectura).
-// No accede a window.gameClient ni ejecuta getters internos del juego.
+// Minibia Runtime Adapter — lee exclusivamente datos visibles del DOM.
+// La detección automática es conservadora: una sola barra de HP válida
+// con nombre y maná visible. En caso ambiguo, devuelve null.
 (function () {
   "use strict";
 
   window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
-
   window.__minibiaCopilotBundle.installRuntimeAdapterModule =
     function installRuntimeAdapterModule(bot) {
-      const storageKey = "minibiaBot.runtimeAdapter.playerName";
-      const defaultName = "Cuitlahuac";
-      let playerName = defaultName;
+      const nameStorageKey = "minibiaBot.runtimeAdapter.playerName";
+      const modeStorageKey = "minibiaBot.runtimeAdapter.nameMode.v2";
+      let mode = bot.storage?.get?.(modeStorageKey, "auto") === "manual"
+        ? "manual" : "auto";
+      let manualName = String(bot.storage?.get?.(nameStorageKey, "") || "").trim();
+      if (mode === "manual" && !manualName) mode = "auto";
 
-      try {
-        const stored = bot.storage?.get?.(storageKey, defaultName);
-        if (typeof stored === "string" && stored.trim()) {
-          playerName = stored.trim();
-        }
-      } catch (_) {
-        // La lectura del DOM funciona incluso sin almacenamiento.
-      }
+      const healthPattern = /^\s*(\d+)\s*\/\s*(\d+)\s*$/;
 
-      function parsePercentage(inlineWidth) {
-        // Solo aceptar el porcentaje escrito directamente por la interfaz.
-        // No usar getComputedStyle: un 100% por CSS puede ser un valor inicial.
-        const match = String(inlineWidth || "")
-          .trim()
-          .match(/^(\d+(?:\.\d+)?)%$/);
-
+      function parsePercent(value) {
+        const match = String(value || "").trim().match(/^(\d+(?:\.\d+)?)%$/);
         if (!match) return null;
-
-        const percentage = Number(match[1]);
-
-        return Number.isFinite(percentage) &&
-          percentage >= 0 &&
-          percentage <= 100
-          ? percentage
-          : null;
+        const num = Number(match[1]);
+        return Number.isFinite(num) && num >= 0 && num <= 100 ? num : null;
       }
 
       function isVisible(element) {
-        if (
-          !element ||
-          !element.isConnected ||
-          !element.getClientRects().length
-        ) {
-          return false;
-        }
-
-        const style = window.getComputedStyle(element);
-
-        return (
-          style.display !== "none" &&
-          style.visibility !== "hidden"
-        );
+        if (!element?.isConnected || element.getClientRects().length === 0) return false;
+        const style = getComputedStyle(element);
+        return style.display !== "none" && style.visibility !== "hidden";
       }
 
-      function getPlayerElement() {
-        // No asumir que character-element-prototype es estable.
-        // La interfaz puede reciclar nodos y generar duplicados.
-        const matches = Array.from(
-          document.querySelectorAll(".text-window")
-        ).filter((element) => {
-          const label = element
-            .querySelector(".skull-name-row")
-            ?.textContent?.trim();
-
-          return label === playerName && isVisible(element);
-        });
-
-        // No seleccionar arbitrariamente entre varias coincidencias.
-        return matches.length === 1 ? matches[0] : null;
-      }
-
-      function getStats() {
-        const element = getPlayerElement();
-
-        if (!element) return null;
-
-        const hpBar = element.querySelector(".value-health");
-        const manaBar = element.querySelector(".value-mana");
-
-        const hpMatch = (hpBar?.getAttribute("title") || "")
-          .match(/^\s*(\d+)\s*\/\s*(\d+)\s*$/);
-
-        let health = null;
-        let maxHealth = null;
-
-        if (hpMatch) {
-          const current = Number(hpMatch[1]);
-          const maximum = Number(hpMatch[2]);
-
-          if (
-            Number.isSafeInteger(current) &&
-            Number.isSafeInteger(maximum) &&
-            maximum > 0 &&
-            current >= 0 &&
-            current <= maximum
-          ) {
-            health = current;
-            maxHealth = maximum;
-          }
-        }
-
-        const healthPercent = maxHealth !== null
-          ? Math.round((health / maxHealth) * 10000) / 100
-          : null;
-
-        const manaPercent = parsePercentage(manaBar?.style?.width);
-
-        if (health === null && manaPercent === null) {
-          return null;
-        }
-
+      function readCandidate(element) {
+        if (!isVisible(element)) return null;
+        const name = element.querySelector(".skull-name-row")?.textContent?.trim();
+        const hp = element.querySelector(".value-health");
+        const mana = element.querySelector(".value-mana");
+        const match = hp?.getAttribute("title")?.match(healthPattern);
+        const manaPercent = parsePercent(mana?.style?.width);
+        if (!name || !match || manaPercent === null) return null;
+        const health = Number(match[1]);
+        const maxHealth = Number(match[2]);
+        if (!Number.isSafeInteger(health) || !Number.isSafeInteger(maxHealth) ||
+            maxHealth <= 0 || health < 0 || health > maxHealth) return null;
         return {
-          name: playerName,
+          name,
           health,
           maxHealth,
-          healthPercent,
+          healthPercent: Math.round((health / maxHealth) * 10000) / 100,
           mana: null,
           maxMana: null,
           manaPercent,
           source: "dom",
-          observedAt: new Date().toISOString()
+          observedAt: new Date().toISOString(),
         };
       }
 
+      function candidates() {
+        return Array.from(document.querySelectorAll(".text-window"))
+          .map(readCandidate).filter(Boolean);
+      }
+
+      function getStats() {
+        const all = candidates();
+        const matches = mode === "manual"
+          ? all.filter((item) => item.name === manualName)
+          : all;
+        // No inferir al jugador por proximidad ni escoger el primer nombre.
+        return matches.length === 1 ? matches[0] : null;
+      }
+
       function setPlayerName(name) {
-        if (typeof name !== "string" || !name.trim()) {
-          return false;
+        if (typeof name !== "string") return false;
+        const cleaned = name.trim();
+        if (!cleaned || cleaned.toLowerCase() === "auto") {
+          mode = "auto";
+          manualName = "";
+        } else {
+          mode = "manual";
+          manualName = cleaned;
         }
-
-        playerName = name.trim();
-
-        try {
-          bot.storage?.set?.(storageKey, playerName);
-        } catch (_) {}
-
+        bot.storage?.set?.(modeStorageKey, mode);
+        if (manualName) bot.storage?.set?.(nameStorageKey, manualName);
         return true;
       }
 
       const api = {
         getStats,
         setPlayerName,
-
         status() {
-          const stats = getStats();
-
+          const all = candidates();
+          const matching = mode === "manual"
+            ? all.filter((item) => item.name === manualName)
+            : all;
+          const stats = matching.length === 1 ? matching[0] : null;
           return {
             installed: true,
-            playerName,
-            playerVisible: stats !== null,
-            healthAvailable:
-              stats?.health !== null &&
-              stats?.health !== undefined,
-            manaPercentAvailable:
-              stats?.manaPercent !== null &&
-              stats?.manaPercent !== undefined,
+            detectionMode: mode,
+            playerName: stats?.name ?? (mode === "manual" ? manualName : null),
+            playerVisible: !!stats,
+            healthAvailable: stats?.health != null,
+            manaPercentAvailable: stats?.manaPercent != null,
+            candidateCount: matching.length,
+            reason: matching.length === 0 ? "Sin candidato válido" :
+              matching.length > 1 ? "Varios candidatos: lectura bloqueada" : null,
             source: "dom",
-            readOnly: true
+            readOnly: true,
           };
-        }
+        },
       };
 
       bot.runtimeAdapter = api;
       window.__minibiaRuntimeAdapter = api;
-
-      if (typeof bot.addCleanup === "function") {
-        bot.addCleanup(() => {
-          if (window.__minibiaRuntimeAdapter === api) {
-            delete window.__minibiaRuntimeAdapter;
-          }
-
-          if (bot.runtimeAdapter === api) {
-            delete bot.runtimeAdapter;
-          }
-        });
-      }
-
+      bot.addCleanup?.(() => {
+        if (window.__minibiaRuntimeAdapter === api) delete window.__minibiaRuntimeAdapter;
+        if (bot.runtimeAdapter === api) delete bot.runtimeAdapter;
+      });
       return api;
     };
 })();

@@ -210,9 +210,20 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
 
   function refreshAutoHealStatus() {
     const autoHealToggle = document.getElementById("minibia-copilot-auto-heal-enabled");
-    if (!autoHealToggle) return;
+    const statusLabel = document.getElementById("minibia-copilot-auto-heal-status");
+    const status = bot.heal?.status?.();
 
-    autoHealToggle.checked = !!bot.heal?.status?.().running;
+    if (autoHealToggle) autoHealToggle.checked = !!status?.running && !status?.monitorOnly;
+    if (!statusLabel) return;
+
+    const hp = status?.stats?.hp;
+    const mana = status?.stats?.manaPercent;
+    const hpLabel = hp ? `${hp.current}/${hp.max} (${((hp.current / hp.max) * 100).toFixed(1)}%)` : "sin datos";
+    const manaLabel = Number.isFinite(mana) ? `${mana}%` : "sin datos";
+    const mode = !status?.running ? "Detenido" : status.monitorOnly ? "Solo monitor" : "Activo";
+    const name = status?.stats?.name || "Sin personaje identificado";
+    statusLabel.textContent = `${mode} | ${name} | HP: ${hpLabel} | Maná: ${manaLabel} | Cura al ${status?.config?.minHpPercent ?? 60}% (F${status?.config?.hpHotbarSlot ?? 1})` +
+      (status?.lastError ? ` | Error: ${status.lastError}` : "");
   }
 
   function refreshAutoInvisibleStatus() {
@@ -2313,23 +2324,54 @@ function refreshAntiBotStatus() {
               </label>
               <div class="mc-field-grid">
                 <label class="mc-field" for="minibia-copilot-auto-heal-min-hp">
-                  <span class="mc-field-label">HP:</span>
-                  <input type="number" id="minibia-copilot-auto-heal-min-hp" min="0" placeholder="250" />
+                  <span class="mc-field-label">Curar al llegar a vida (%):</span>
+                  <input type="number" id="minibia-copilot-auto-heal-min-hp" min="0" max="100" step="1" placeholder="60" />
                 </label>
                 <label class="mc-field" for="minibia-copilot-auto-heal-hp-hotkey">
-                  <span class="mc-field-label">HP Hotkey (1-12)</span>
-                  <input type="number" id="minibia-copilot-auto-heal-hp-hotkey" min="1" max="12" placeholder="1" />
+                  <span class="mc-field-label">Tecla de curación</span>
+                  <select id="minibia-copilot-auto-heal-hp-hotkey">
+                    <option value="1">F1</option>
+                    <option value="2">F2</option>
+                    <option value="3">F3</option>
+                    <option value="4">F4</option>
+                    <option value="5">F5</option>
+                    <option value="6">F6</option>
+                    <option value="7">F7</option>
+                    <option value="8">F8</option>
+                    <option value="9">F9</option>
+                    <option value="10">F10</option>
+                    <option value="11">F11</option>
+                    <option value="12">F12</option>
+                  </select>
                 </label>
                 <label class="mc-field" for="minibia-copilot-auto-heal-min-mana">
-                  <span class="mc-field-label">Mana:</span>
-                  <input type="number" id="minibia-copilot-auto-heal-min-mana" min="0" placeholder="150" />
+                  <span class="mc-field-label">Mana (%):</span>
+                  <input type="number" id="minibia-copilot-auto-heal-min-mana" min="0" max="100" placeholder="25" />
                 </label>
                 <label class="mc-field" for="minibia-copilot-auto-heal-mana-hotkey">
-                  <span class="mc-field-label">Mana Hotkey (1-12)</span>
-                  <input type="number" id="minibia-copilot-auto-heal-mana-hotkey" min="1" max="12" placeholder="2" />
+                  <span class="mc-field-label">Tecla de maná</span>
+                  <select id="minibia-copilot-auto-heal-mana-hotkey">
+                    <option value="1">F1</option>
+                    <option value="2">F2</option>
+                    <option value="3">F3</option>
+                    <option value="4">F4</option>
+                    <option value="5">F5</option>
+                    <option value="6">F6</option>
+                    <option value="7">F7</option>
+                    <option value="8">F8</option>
+                    <option value="9">F9</option>
+                    <option value="10">F10</option>
+                    <option value="11">F11</option>
+                    <option value="12">F12</option>
+                  </select>
                 </label>
               </div>
-              <div class="mc-small-note">El HP se cura antes que el mana.</div>
+              <label class="mc-toggle">
+                <input type="checkbox" id="minibia-copilot-auto-heal-mana-enabled" />
+                <span>Usar pociones de maná (opcional)</span>
+              </label>
+              <div class="mc-small-note">Personaje: detección automática. Las teclas elegidas deben contener "Use Item". HP tiene prioridad.</div>
+              <div class="mc-small-note" id="minibia-copilot-auto-heal-status">Estado: esperando datos</div>
             </div>
           </div>
 
@@ -2659,6 +2701,7 @@ function refreshAntiBotStatus() {
     const autoHealMinHpInput = panel.querySelector("#minibia-copilot-auto-heal-min-hp");
     const autoHealHpHotkeyInput = panel.querySelector("#minibia-copilot-auto-heal-hp-hotkey");
     const autoHealMinManaInput = panel.querySelector("#minibia-copilot-auto-heal-min-mana");
+    const autoHealManaEnabledInput = panel.querySelector("#minibia-copilot-auto-heal-mana-enabled");
     const autoHealManaHotkeyInput = panel.querySelector("#minibia-copilot-auto-heal-mana-hotkey");
     const autoAttackEnabledInput = panel.querySelector("#minibia-copilot-auto-attack-enabled");
     const autoAttackMeleeInput = panel.querySelector("#minibia-copilot-auto-attack-melee");
@@ -3294,11 +3337,11 @@ function refreshAntiBotStatus() {
     }
 
     if (autoHealMinHpInput) {
-      autoHealMinHpInput.value = String(bot.heal?.config?.minHp ?? 0);
+      autoHealMinHpInput.value = String(bot.heal?.config?.minHpPercent ?? 60);
       autoHealMinHpInput.addEventListener("change", () => {
-        const minHp = Math.max(0, Number(autoHealMinHpInput.value) || 0);
-        autoHealMinHpInput.value = String(minHp);
-        bot.heal.updateConfig({ minHp });
+        const minHpPercent = Math.min(100, Math.max(0, Number(autoHealMinHpInput.value) || 0));
+        autoHealMinHpInput.value = String(minHpPercent);
+        bot.heal.updateConfig({ minHpPercent });
       });
     }
 
@@ -3312,11 +3355,18 @@ function refreshAntiBotStatus() {
     }
 
     if (autoHealMinManaInput) {
-      autoHealMinManaInput.value = String(bot.heal?.config?.minMana ?? 0);
+      autoHealMinManaInput.value = String(bot.heal?.config?.minManaPercent ?? 25);
       autoHealMinManaInput.addEventListener("change", () => {
-        const minMana = Math.max(0, Number(autoHealMinManaInput.value) || 0);
-        autoHealMinManaInput.value = String(minMana);
-        bot.heal.updateConfig({ minMana });
+        const minManaPercent = Math.min(100, Math.max(0, Number(autoHealMinManaInput.value) || 0));
+        autoHealMinManaInput.value = String(minManaPercent);
+        bot.heal.updateConfig({ minManaPercent });
+      });
+    }
+
+    if (autoHealManaEnabledInput) {
+      autoHealManaEnabledInput.checked = !!bot.heal?.config?.manaEnabled;
+      autoHealManaEnabledInput.addEventListener("change", () => {
+        bot.heal.updateConfig({ manaEnabled: autoHealManaEnabledInput.checked });
       });
     }
 
@@ -3332,19 +3382,24 @@ function refreshAntiBotStatus() {
     if (autoHealEnabledInput) {
       autoHealEnabledInput.checked = !!bot.heal?.status?.().running;
       autoHealEnabledInput.addEventListener("change", () => {
-        const minHp = Math.max(0, Number(autoHealMinHpInput?.value) || bot.heal.config.minHp || 0);
+        const minHpPercent = Math.min(100, Math.max(0,
+          Number(autoHealMinHpInput?.value ?? bot.heal.config.minHpPercent)
+        ));
         const hpHotbarSlot = Math.min(
           12,
           Math.max(1, Number(autoHealHpHotkeyInput?.value) || bot.heal.config.hpHotbarSlot || 1)
         );
-        const minMana = Math.max(0, Number(autoHealMinManaInput?.value) || bot.heal.config.minMana || 0);
+        const minManaPercent = Math.min(100, Math.max(0,
+          Number(autoHealMinManaInput?.value ?? bot.heal.config.minManaPercent)
+        ));
+        const manaEnabled = !!autoHealManaEnabledInput?.checked;
         const manaHotbarSlot = Math.min(
           12,
           Math.max(1, Number(autoHealManaHotkeyInput?.value) || bot.heal.config.manaHotbarSlot || 1)
         );
 
         if (autoHealEnabledInput.checked) {
-          bot.heal.start({ minHp, hpHotbarSlot, minMana, manaHotbarSlot });
+          bot.heal.start({ minHpPercent, hpHotbarSlot, minManaPercent, manaEnabled, manaHotbarSlot });
         } else {
           bot.heal.stop();
         }
@@ -3604,6 +3659,7 @@ function refreshAntiBotStatus() {
       refreshStatusPillbar();
       refreshHuntStatus();
       refreshLootbagStatus();
+      refreshAutoHealStatus();
     }, 1000);
     bot.addCleanup(() => {
       window.clearInterval(snapshotTimerId);
