@@ -1439,427 +1439,344 @@ window.__minibiaCopilotBundle.installPzModule = function installPzModule(bot) {
 window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot) {
+  "use strict";
+
   const configStorageKey = "minibiaCopilot.xray.config";
   const overlayRootId = "minibia-copilot-xray-overlay";
   const overlayStyleId = "minibia-copilot-xray-overlay-style";
-  const overlayState = {
-    running: false,
-    timerId: null,
-  };
-  const config = Object.assign(
-    {
-      overlayEnabled: false,
-      selectedFloor: null,
-    },
-    bot.storage.get(configStorageKey, {})
-  );
+  const refreshMs = 350;
+  const state = { running: false, timerId: null, lastError: null, provider: null };
+  const config = Object.assign({
+    overlayEnabled: false,
+    selectedFloor: null,
+  }, bot.storage?.get?.(configStorageKey, {}) || {});
 
-  config.selectedFloor = normalizeSelectedFloor(config.selectedFloor);
-
-  function persistConfig() {
-    bot.storage.set(configStorageKey, { ...config });
+  function floorValue(value) {
+    if (value == null || value === "" || value === "all") return null;
+    const n = Number(value);
+    return Number.isInteger(n) && n >= 0 && n <= 15 ? n : null;
   }
 
-  function normalizeName(name) {
-    return String(name || "").trim().toLowerCase();
+  config.selectedFloor = floorValue(config.selectedFloor);
+  function save() { bot.storage?.set?.(configStorageKey, { ...config }); }
+  function normalizedName(value) { return String(value || "").trim().toLowerCase(); }
+
+  function positionOf(value) {
+    if (!value || typeof value !== "object") return null;
+    const x = Number(value.x), y = Number(value.y), z = Number(value.z);
+    if (![x, y, z].every(Number.isSafeInteger) || z < 0 || z > 15) return null;
+    return { x, y, z };
   }
 
-  function normalizeSelectedFloor(value) {
-    if (value == null || value === "" || value === "all") {
-      return null;
+  // Nunca ejecutar el getter protegido de window.gameClient.
+  // En clientes anteriores era una propiedad de datos ordinaria.
+  function legacyClient() {
+    const descriptor = Object.getOwnPropertyDescriptor(window, "gameClient");
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, "value")) return null;
+    return descriptor.value && typeof descriptor.value === "object" ? descriptor.value : null;
+  }
+
+  function readDomSnapshot() {
+    // Solo tomar coordenadas explícitas publicadas como atributos del DOM.
+    // No extrapolar coordenadas a partir de nombres de una battle list.
+    const playerElement = document.querySelector(
+      '[data-player-position][data-x][data-y][data-z], [data-player="self"][data-x][data-y][data-z]'
+    );
+    const playerPosition = playerElement ? positionOf({
+      x: playerElement.dataset.x,
+      y: playerElement.dataset.y,
+      z: playerElement.dataset.z,
+    }) : null;
+    const creatureElements = Array.from(document.querySelectorAll(
+      '[data-creature-id][data-x][data-y][data-z]'
+    )).slice(0, 300);
+    const creatures = creatureElements.map((el) => ({
+      id: el.dataset.creatureId,
+      name: el.dataset.creatureName || el.getAttribute("aria-label") || "",
+      type: /^player$/i.test(el.dataset.creatureType || "") ? 0 : 1,
+      __position: positionOf({ x: el.dataset.x, y: el.dataset.y, z: el.dataset.z }),
+    })).filter(c => c.__position);
+    return { playerPosition, creatures };
+  }
+
+  function normalizeCreatures(input) {
+    let values = [];
+    if (Array.isArray(input)) values = input;
+    else if (input && typeof input === "object") values = Object.values(input);
+    return values.slice(0, 1000).filter(Boolean).map((creature) => {
+      const position = positionOf(creature.__position || creature.position);
+      if (!position) return null;
+      return {
+        ...creature,
+        id: creature.id ?? null,
+        name: String(creature.name || ""),
+        type: creature.type === 0 || creature.type === "player" ? 0 : 1,
+        __position: position,
+      };
+    }).filter(Boolean);
+  }
+
+  function readSnapshot() {
+    state.lastError = null;
+    const dom = readDomSnapshot();
+    let source = "unavailable";
+    let snapshot = null;
+
+    try {
+      if (state.provider) {
+        snapshot = state.provider();
+        source = "custom-provider";
+      } else if (typeof bot.runtimeAdapter?.getWorldSnapshot === "function") {
+        snapshot = bot.runtimeAdapter.getWorldSnapshot();
+        source = "runtime-adapter";
+      } else {
+        const client = legacyClient();
+        if (client?.world?.activeCreatures) {
+          snapshot = {
+            playerPosition: client.player?.__position || client.player?.position,
+            playerId: client.player?.id,
+            creatures: client.world.activeCreatures,
+          };
+          source = "legacy-data-property";
+        } else if (dom.playerPosition && dom.creatures.length) {
+          snapshot = dom;
+          source = "dom-positions";
+        }
+      }
+    } catch (error) {
+      state.lastError = String(error?.message || error);
+      source = "error";
     }
 
-    const floor = Number(value);
-    if (!Number.isFinite(floor)) {
-      return null;
+    if (!snapshot || typeof snapshot !== "object") {
+      return { source, playerPosition: dom.playerPosition, creatures: [], available: false };
     }
 
-    return Math.trunc(floor);
-  }
-
-  function isWithinVisibleRange(me, pos) {
-    if (!me || !pos) {
-      return false;
-    }
-
-    const dx = Math.abs(pos.x - me.x);
-    const dy = Math.abs(pos.y - me.y);
-    return dx <= 8 && dy <= 6;
-  }
-
-  function getTrackedCreatures() {
-    const myState = bot.getPlayerState();
-    const myId = window.gameClient?.player?.id;
-    const myName = normalizeName(myState?.name);
-
-    return Object.values(window.gameClient?.world?.activeCreatures || {}).filter((creature) => {
-      if (!creature) return false;
-      if (creature.id === myId) return false;
-
-      const name = normalizeName(creature.name);
-      if (name && name === myName) return false;
-
+    const playerPosition = positionOf(
+      snapshot.playerPosition || snapshot.player?.__position || snapshot.player?.position
+    ) || dom.playerPosition;
+    const playerId = snapshot.playerId ?? snapshot.player?.id ?? null;
+    const playerName = normalizedName(
+      snapshot.playerName || snapshot.player?.name || bot.runtimeAdapter?.getStats?.()?.name
+    );
+    const creatures = normalizeCreatures(snapshot.creatures || snapshot.activeCreatures || []);
+    const filtered = creatures.filter((creature) => {
+      if (playerId != null && creature.id === playerId) return false;
+      if (playerName && normalizedName(creature.name) === playerName) return false;
       return true;
     });
+    return {
+      source,
+      playerPosition,
+      creatures: filtered,
+      available: !!playerPosition && source !== "error",
+    };
+  }
+
+  function near(me, pos) {
+    return !!(me && pos && Math.abs(pos.x - me.x) <= 8 && Math.abs(pos.y - me.y) <= 6);
   }
 
   function getVisibleCreatures() {
-    const me = bot.getPlayerPosition();
-    if (!me) {
-      return [];
-    }
-
-    // Keep the visible query strict; panic logic relies on this staying screen-limited.
-    return getTrackedCreatures().filter((creature) => isWithinVisibleRange(me, creature.__position));
+    const data = readSnapshot();
+    if (!data.playerPosition) return [];
+    return data.creatures.filter(c => near(data.playerPosition, c.__position));
+  }
+  function getVisiblePlayers({ sameFloorOnly = false } = {}) {
+    const data = readSnapshot();
+    if (!data.playerPosition) return [];
+    return data.creatures.filter(c =>
+      c.type === 0 && near(data.playerPosition, c.__position) &&
+      (!sameFloorOnly || c.__position.z === data.playerPosition.z)
+    );
+  }
+  function getVisibleMonsters({ sameFloorOnly = false } = {}) {
+    const data = readSnapshot();
+    if (!data.playerPosition) return [];
+    return data.creatures.filter(c =>
+      c.type !== 0 && near(data.playerPosition, c.__position) &&
+      (!sameFloorOnly || c.__position.z === data.playerPosition.z)
+    );
   }
 
-  function getVisiblePlayers(options = {}) {
-    const { sameFloorOnly = false } = options;
-    const me = bot.getPlayerPosition();
-    if (!me) {
-      return [];
-    }
-
-    return getVisibleCreatures().filter((creature) => {
-      if (creature?.type !== 0) {
-        return false;
-      }
-
-      if (!sameFloorOnly) {
-        return true;
-      }
-
-      return creature.__position?.z === me.z;
+  function overlayCreaturesFrom(data) {
+    const me = data.playerPosition;
+    if (!me) return [];
+    return data.creatures.filter(c => {
+      const pos = c.__position;
+      if (!pos) return false;
+      if (config.selectedFloor != null && pos.z !== config.selectedFloor) return false;
+      return pos.z !== me.z ? near(me, pos) : !near(me, pos);
     });
   }
+  function getOverlayCreatures() { return overlayCreaturesFrom(readSnapshot()); }
 
-  function getVisibleMonsters(options = {}) {
-    const { sameFloorOnly = false } = options;
-    const me = bot.getPlayerPosition();
-    if (!me) {
-      return [];
-    }
-
-    return getVisibleCreatures().filter((creature) => {
-      if (creature?.type === 0) {
-        return false;
-      }
-
-      if (!sameFloorOnly) {
-        return true;
-      }
-
-      return creature.__position?.z === me.z;
-    });
+  function getViewportRect() {
+    const canvases = Array.from(document.querySelectorAll("canvas"))
+      .map(canvas => canvas.getBoundingClientRect())
+      .filter(rect => rect.width >= 200 && rect.height >= 150)
+      .sort((a, b) => b.width * b.height - a.width * a.height);
+    return canvases[0] || null;
   }
 
-  function readCreatureHealth(creature) {
-    if (!creature) {
-      return null;
+  function ensureOverlay() {
+    let style = document.getElementById(overlayStyleId);
+    if (!style) {
+      style = document.createElement("style");
+      style.id = overlayStyleId;
+      style.textContent = `
+        #${overlayRootId}{position:fixed;inset:0;pointer-events:none;z-index:999998}
+        #${overlayRootId} .mc-xray-marker{
+          position:fixed;transform:translate(-50%,-50%);padding:2px 6px;
+          border:1px solid rgba(255,211,128,.85);border-radius:999px;
+          background:rgba(65,24,12,.78);color:#ffe7ae;
+          font:11px/1.2 Verdana,sans-serif;white-space:nowrap}
+        #${overlayRootId} .mc-xray-marker-offscreen{
+          border-color:rgba(123,235,178,.92);background:rgba(11,61,43,.8);color:#d8ffea}`;
+      document.head.appendChild(style);
     }
-
-    const current = [
-      creature.health,
-      creature.hp,
-      creature.currentHealth,
-      creature.state?.health,
-    ].find((value) => Number.isFinite(Number(value)));
-
-    const max = [
-      creature.maxHealth,
-      creature.maxHp,
-      creature.maximumHealth,
-      creature.state?.maxHealth,
-    ].find((value) => Number.isFinite(Number(value)));
-
-    const percent = [
-      creature.healthPercent,
-      creature.hpPercent,
-      creature.healthpercentage,
-      creature.state?.healthPercent,
-    ].find((value) => Number.isFinite(Number(value)));
-
-    if (current != null && max != null) {
-      return `${Number(current)}/${Number(max)} HP`;
-    }
-
-    if (percent != null) {
-      return `${Math.round(Number(percent))}% HP`;
-    }
-
-    if (current != null) {
-      return `${Number(current)} HP`;
-    }
-
-    return null;
-  }
-
-  function getCreatureLabel(creature) {
-    if (creature?.name) {
-      return creature.name;
-    }
-
-    return creature?.type === 0 ? "Player" : "Mob";
-  }
-
-  function getOverlayCreatures() {
-    const me = bot.getPlayerPosition();
-    if (!me) {
-      return [];
-    }
-
-    return getTrackedCreatures().filter((creature) => {
-      const pos = creature?.__position;
-      if (!pos || pos.z == null) {
-        return false;
-      }
-
-      if (config.selectedFloor != null && pos.z !== config.selectedFloor) {
-        return false;
-      }
-
-      if (pos.z !== me.z) {
-        return isWithinVisibleRange(me, pos);
-      }
-
-      return !isWithinVisibleRange(me, pos);
-    });
-  }
-
-  function clamp(value, min, max) {
-    return Math.min(Math.max(value, min), max);
-  }
-
-  function getSameFloorOffscreenMarkerText(creature, healthLabel) {
-    return healthLabel
-      ? `${getCreatureLabel(creature)} ${healthLabel}`
-      : `${getCreatureLabel(creature)}`;
-  }
-
-  function ensureOverlayStyle() {
-    if (document.getElementById(overlayStyleId)) {
-      return;
-    }
-
-    const style = document.createElement("style");
-    style.id = overlayStyleId;
-    style.textContent = `
-      #${overlayRootId} {
-        position: fixed;
-        inset: 0;
-        pointer-events: none;
-        z-index: 999998;
-      }
-
-      #${overlayRootId} .mc-xray-marker {
-        position: fixed;
-        transform: translate(-50%, -50%);
-        padding: 2px 6px;
-        border: 1px solid rgba(255, 211, 128, 0.85);
-        border-radius: 999px;
-        background: rgba(65, 24, 12, 0.72);
-        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
-        color: #ffe7ae;
-        font: 11px/1.2 Verdana, sans-serif;
-        white-space: nowrap;
-      }
-
-      #${overlayRootId} .mc-xray-marker.mc-xray-marker-offscreen {
-        border-color: rgba(123, 235, 178, 0.92);
-        background: rgba(11, 61, 43, 0.8);
-        color: #d8ffea;
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
-  function ensureOverlayRoot() {
     let root = document.getElementById(overlayRootId);
-    if (root) {
-      return root;
+    if (!root) {
+      root = document.createElement("div");
+      root.id = overlayRootId;
+      document.body.appendChild(root);
     }
-
-    root = document.createElement("div");
-    root.id = overlayRootId;
-    document.body.appendChild(root);
     return root;
   }
 
-  function destroyOverlayElements() {
+  function clearOverlay() {
     document.getElementById(overlayRootId)?.remove();
     document.getElementById(overlayStyleId)?.remove();
   }
 
-  function getViewportRect() {
-    const canvases = Array.from(document.querySelectorAll("canvas"))
-      .map((canvas) => ({ canvas, rect: canvas.getBoundingClientRect() }))
-      .filter(({ rect }) => rect.width >= 200 && rect.height >= 150)
-      .sort((a, b) => (b.rect.width * b.rect.height) - (a.rect.width * a.rect.height));
-
-    return canvases[0]?.rect || null;
+  function healthText(creature) {
+    const rawHp = creature.health ?? creature.hp;
+    const rawMaxHp = creature.maxHealth ?? creature.maxHp;
+    const h = rawHp == null ? null : Number(rawHp);
+    const max = rawMaxHp == null ? null : Number(rawMaxHp);
+    if (h !== null && max !== null && Number.isFinite(h) && Number.isFinite(max) && max > 0) return ` ${h}/${max} HP`;
+    const rawPercent = creature.healthPercent ?? creature.hpPercent;
+    const percent = rawPercent == null ? null : Number(rawPercent);
+    return percent !== null && Number.isFinite(percent) && percent >= 0 && percent <= 100
+      ? ` ${Math.round(percent)}% HP` : "";
   }
+  function clamp(value, min, max) { return Math.max(min, Math.min(value, max)); }
 
   function renderOverlay() {
-    if (!overlayState.running) {
-      return;
+    if (!state.running) return;
+    const root = ensureOverlay();
+    const data = readSnapshot();
+    const rect = getViewportRect();
+    const creatures = overlayCreaturesFrom(data);
+    root.replaceChildren();
+    if (!data.playerPosition || !rect || !creatures.length) return;
+    const me = data.playerPosition;
+    const tileW = rect.width / 17, tileH = rect.height / 13;
+    const margin = 42;
+    for (const creature of creatures) {
+      const pos = creature.__position;
+      const sameFloor = pos.z === me.z;
+      const floorOffset = me.z - pos.z;
+      const node = document.createElement("div");
+      node.className = sameFloor ? "mc-xray-marker mc-xray-marker-offscreen" : "mc-xray-marker";
+      const floorText = floorOffset === 0 ? "" : ` (${floorOffset > 0 ? "+" : ""}${floorOffset})`;
+      node.textContent = (creature.name || (creature.type === 0 ? "Player" : "Mob")) + floorText + healthText(creature);
+      const x = rect.left + (pos.x - me.x + 8.5) * tileW;
+      const y = rect.top + (pos.y - me.y + 6.5) * tileH;
+      node.style.left = `${clamp(x, rect.left + margin, rect.right - margin)}px`;
+      node.style.top = `${clamp(y, rect.top + margin, rect.bottom - margin)}px`;
+      root.appendChild(node);
     }
-
-    const root = ensureOverlayRoot();
-    const me = bot.getPlayerPosition();
-    const viewportRect = getViewportRect();
-    const creatures = getOverlayCreatures();
-    root.innerHTML = "";
-
-    if (!me || !viewportRect || !creatures.length) {
-      return;
-    }
-
-    const tileWidth = viewportRect.width / 17;
-    const tileHeight = viewportRect.height / 13;
-    const edgePadding = 48;
-
-    creatures.forEach((creature) => {
-      const pos = creature?.__position;
-      if (!pos) return;
-
-      const dx = pos.x - me.x;
-      const dy = pos.y - me.y;
-      const healthLabel = readCreatureHealth(creature);
-      const marker = document.createElement("div");
-      marker.className = "mc-xray-marker";
-
-      if (pos.z === me.z) {
-        marker.classList.add("mc-xray-marker-offscreen");
-        marker.textContent = getSameFloorOffscreenMarkerText(creature, healthLabel);
-        marker.style.left = `${clamp(
-          viewportRect.left + ((dx + 8.5) * tileWidth),
-          viewportRect.left + edgePadding,
-          viewportRect.right - edgePadding
-        )}px`;
-        marker.style.top = `${clamp(
-          viewportRect.top + ((dy + 6.5) * tileHeight),
-          viewportRect.top + edgePadding,
-          viewportRect.bottom - edgePadding
-        )}px`;
-      } else {
-        const floorOffset = me.z - pos.z;
-        const floorLabel = floorOffset === 0 ? "0" : floorOffset > 0 ? `+${floorOffset}` : `${floorOffset}`;
-        marker.textContent = healthLabel
-          ? `${getCreatureLabel(creature)} (${floorLabel}) ${healthLabel}`
-          : `${getCreatureLabel(creature)} (${floorLabel})`;
-        marker.style.left = `${viewportRect.left + ((dx + 8.5) * tileWidth)}px`;
-        marker.style.top = `${viewportRect.top + ((dy + 6.5) * tileHeight)}px`;
-      }
-
-      root.appendChild(marker);
-    });
   }
 
   function startOverlay() {
+    if (state.running) return false;
+    state.running = true;
     config.overlayEnabled = true;
-    persistConfig();
-
-    if (overlayState.running) {
-      return false;
-    }
-
-    overlayState.running = true;
-    ensureOverlayStyle();
+    save();
     renderOverlay();
-    overlayState.timerId = window.setInterval(renderOverlay, 250);
+    state.timerId = window.setInterval(() => {
+      try { renderOverlay(); }
+      catch (error) { state.lastError = String(error?.message || error); }
+    }, refreshMs);
     return true;
   }
 
-  function stopOverlay() {
-    config.overlayEnabled = false;
-    persistConfig();
-
-    if (!overlayState.running && overlayState.timerId == null) {
-      return false;
+  function stopOverlay(options = {}) {
+    state.running = false;
+    if (state.timerId != null) window.clearInterval(state.timerId);
+    state.timerId = null;
+    clearOverlay();
+    if (options.persistEnabled !== false) {
+      config.overlayEnabled = false;
+      save();
     }
-
-    overlayState.running = false;
-    if (overlayState.timerId != null) {
-      window.clearInterval(overlayState.timerId);
-      overlayState.timerId = null;
-    }
-
-    destroyOverlayElements();
     return true;
   }
-
   function setOverlayEnabled(enabled) {
-    const nextEnabled = !!enabled;
-
-    if (nextEnabled) {
-      if (overlayState.running) {
-        config.overlayEnabled = true;
-        persistConfig();
-        return true;
-      }
-
+    if (enabled) {
+      if (state.running) return true;
       return startOverlay();
     }
-
-    if (!overlayState.running) {
-      config.overlayEnabled = false;
-      persistConfig();
-      destroyOverlayElements();
-      return true;
-    }
-
     return stopOverlay();
   }
-
-  function setSelectedFloor(floor) {
-    config.selectedFloor = normalizeSelectedFloor(floor);
-    persistConfig();
-
-    if (overlayState.running) {
-      renderOverlay();
-    }
-
+  function setSelectedFloor(value) {
+    config.selectedFloor = floorValue(value);
+    save();
+    if (state.running) renderOverlay();
     return config.selectedFloor;
   }
 
-  function status() {
+  function formatCreature(creature) {
     return {
-      visibleCreatures: getVisibleCreatures().map((creature) => ({
-        id: creature.id,
-        name: creature.name,
-        type: creature.type,
-        position: creature.__position || null,
-      })),
-      visiblePlayers: getVisiblePlayers().map((player) => ({
-        id: player.id,
-        name: player.name,
-        position: player.__position || null,
-      })),
-      visiblePlayersCurrentFloor: getVisiblePlayers({ sameFloorOnly: true }).map((player) => ({
-        id: player.id,
-        name: player.name,
-        position: player.__position || null,
-      })),
-      visibleMonsters: getVisibleMonsters().map((creature) => ({
-        id: creature.id,
-        name: creature.name,
-        type: creature.type,
-        position: creature.__position || null,
-      })),
-      visibleMonstersCurrentFloor: getVisibleMonsters({ sameFloorOnly: true }).map((creature) => ({
-        id: creature.id,
-        name: creature.name,
-        type: creature.type,
-        position: creature.__position || null,
-      })),
-      overlayCreatures: getOverlayCreatures().map((creature) => ({
-        id: creature.id,
-        name: creature.name,
-        type: creature.type,
-        position: creature.__position || null,
-      })),
+      id: creature.id,
+      name: creature.name,
+      type: creature.type,
+      position: { ...creature.__position },
+    };
+  }
+
+  function inspectSources() {
+    const descriptor = Object.getOwnPropertyDescriptor(window, "gameClient");
+    const data = readSnapshot();
+    const domMarkers = document.querySelectorAll('[data-creature-id][data-x][data-y][data-z]').length;
+    return {
+      source: data.source,
+      available: data.available,
+      playerPosition: data.playerPosition,
+      creatureCount: data.creatures.length,
+      gameClientDescriptor: !descriptor ? "absent" :
+        Object.prototype.hasOwnProperty.call(descriptor, "value") ? "data-property" : "protected-accessor",
+      runtimeAdapterStats: !!bot.runtimeAdapter?.getStats?.(),
+      runtimeAdapterWorld: typeof bot.runtimeAdapter?.getWorldSnapshot === "function",
+      domPositionMarkers: domMarkers,
+      viewportFound: !!getViewportRect(),
+      error: state.lastError,
+      note: !data.available
+        ? "No hay posiciones verificables. La barra HP/maná no proporciona coordenadas ni pisos."
+        : null,
+    };
+  }
+
+  function status() {
+    const data = readSnapshot();
+    const me = data.playerPosition;
+    const visible = me ? data.creatures.filter(c => near(me, c.__position)) : [];
+    const players = visible.filter(c => c.type === 0);
+    const monsters = visible.filter(c => c.type !== 0);
+    return {
+      visibleCreatures: visible.map(formatCreature),
+      visiblePlayers: players.map(formatCreature),
+      visiblePlayersCurrentFloor: players.filter(c => c.__position.z === me?.z).map(formatCreature),
+      visibleMonsters: monsters.map(formatCreature),
+      visibleMonstersCurrentFloor: monsters.filter(c => c.__position.z === me?.z).map(formatCreature),
+      overlayCreatures: overlayCreaturesFrom(data).map(formatCreature),
+      playerPosition: me,
+      dataSource: data.source,
+      dataAvailable: data.available,
+      dataError: state.lastError,
       config: { ...config },
-      overlayRunning: overlayState.running,
+      overlayRunning: state.running,
     };
   }
 
@@ -1874,14 +1791,20 @@ window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot
     setSelectedFloor,
     status,
     config,
+    inspectSources,
+    // Permite incorporar una fuente futura que entregue
+    // {playerPosition:{x,y,z}, creatures:[{id,name,type,position:{x,y,z}}]}.
+    setDataProvider(fn) {
+      if (fn != null && typeof fn !== "function") return false;
+      state.provider = fn || null;
+      if (state.running) renderOverlay();
+      return true;
+    },
   };
 
-  if (config.overlayEnabled) {
-    startOverlay();
-  } else {
-    destroyOverlayElements();
-  }
-  bot.addCleanup(stopOverlay);
+  if (config.overlayEnabled) startOverlay();
+  else clearOverlay();
+  bot.addCleanup?.(() => stopOverlay({ persistEnabled: false }));
 };
 window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
@@ -3072,7 +2995,7 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
       else state.lastManaHealAt = now;
     } else {
       state.failedAttempts++;
-      if (state.failedAttempts >= 20) {
+      if (state.failedAttempts >= 50) {
         stop({ reason: "Dos usos sin efecto confirmado; Auto Heal detenido" });
       }
     }
@@ -11542,15 +11465,12 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
 
   function refreshXrayStatus() {
     const status = bot.xray?.status?.();
-    const me = bot.getPlayerPosition?.();
+    const me = status?.playerPosition || null;
     const overlayButton = document.getElementById("minibia-copilot-xray-overlay-toggle");
     const overlayLabel = document.getElementById("minibia-copilot-xray-overlay-status");
     const floorSelect = document.getElementById("minibia-copilot-xray-floor-select");
     const formatFloorOffset = (floor) => {
-      if (!me || floor == null) {
-        return null;
-      }
-
+      if (!me || floor == null) return null;
       const offset = me.z - floor;
       return offset === 0 ? "0" : offset > 0 ? `+${offset}` : `${offset}`;
     };
@@ -11558,47 +11478,37 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     if (overlayButton) {
       overlayButton.textContent = status?.config?.overlayEnabled ? "Disable Overlay" : "Enable Overlay";
     }
-
     if (overlayLabel) {
+      const active = status?.overlayRunning ? "on" : "off";
       const floorLabel = status?.config?.selectedFloor == null
-        ? "all floors"
-        : `${formatFloorOffset(status.config.selectedFloor) ?? "?"}`;
-      overlayLabel.textContent = `${status?.config?.overlayEnabled ? "Overlay: on" : "Overlay: off"} • ${floorLabel}`;
+        ? "all floors" : formatFloorOffset(status.config.selectedFloor) ?? "?";
+      const source = status?.dataSource || "unavailable";
+      const count = status?.visibleCreatures?.length ?? 0;
+      overlayLabel.textContent = !status?.dataAvailable
+        ? `Overlay: ${active} · Sin coordenadas de criaturas (${source}). Ejecuta minibiaCopilot.xray.inspectSources()`
+        : `Overlay: ${active} · ${floorLabel} · ${count} criaturas · ${source}`;
+      if (status?.dataError) overlayLabel.textContent += ` · ${status.dataError}`;
     }
-
     if (floorSelect) {
-      const floors = Array.from(
-        new Set(
-          (status?.visibleCreatures || [])
-            .map((creature) => creature?.position?.z)
-            .filter((floor) => floor != null)
-        )
-      ).sort((a, b) => a - b);
-      const selectedFloor = status?.config?.selectedFloor;
-
-      if (selectedFloor != null && !floors.includes(selectedFloor)) {
-        floors.push(selectedFloor);
-        floors.sort((a, b) => a - b);
-      }
-
-      floorSelect.innerHTML = "";
-
-      const allOption = document.createElement("option");
-      allOption.value = "all";
-      allOption.textContent = "All floors";
-      floorSelect.appendChild(allOption);
-
-      floors.forEach((floor) => {
+      const floors = Array.from(new Set([
+        ...(status?.visibleCreatures || []),
+        ...(status?.overlayCreatures || []),
+      ].map(c => c?.position?.z).filter(Number.isInteger))).sort((a, b) => a - b);
+      const selected = status?.config?.selectedFloor;
+      if (selected != null && !floors.includes(selected)) floors.push(selected);
+      floors.sort((a, b) => a - b);
+      floorSelect.replaceChildren();
+      const all = document.createElement("option");
+      all.value = "all";
+      all.textContent = "All floors";
+      floorSelect.appendChild(all);
+      floors.forEach(floor => {
         const option = document.createElement("option");
         option.value = String(floor);
-        const offsetLabel = formatFloorOffset(floor);
-        option.textContent = offsetLabel == null
-          ? String(floor)
-          : offsetLabel;
+        option.textContent = formatFloorOffset(floor) ?? String(floor);
         floorSelect.appendChild(option);
       });
-
-      floorSelect.value = selectedFloor == null ? "all" : String(selectedFloor);
+      floorSelect.value = selected == null ? "all" : String(selected);
     }
   }
 
@@ -12595,8 +12505,8 @@ function refreshAntiBotStatus() {
     const list = document.getElementById("minibia-copilot-visible-creatures-list");
     if (!list) return;
 
-    const me = bot.getPlayerPosition?.();
     const status = bot.xray?.status?.();
+    const me = status?.playerPosition || null;
     const creatures = status?.visibleCreatures || [];
     const selectedFloor = status?.config?.selectedFloor;
     list.innerHTML = "";
@@ -12604,7 +12514,7 @@ function refreshAntiBotStatus() {
     if (!me) {
       const empty = document.createElement("div");
       empty.className = "mc-small-note";
-      empty.textContent = "Current position unavailable.";
+      empty.textContent = "Sin coordenadas del personaje. Ejecuta minibiaCopilot.xray.inspectSources() en la consola.";
       list.appendChild(empty);
       return;
     }

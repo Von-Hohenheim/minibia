@@ -283,7 +283,7 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
       else state.lastManaHealAt = now;
     } else {
       state.failedAttempts++;
-      if (state.failedAttempts >= 20) {
+      if (state.failedAttempts >= 50) {
         stop({ reason: "Dos usos sin efecto confirmado; Auto Heal detenido" });
       }
     }

@@ -56,15 +56,12 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
 
   function refreshXrayStatus() {
     const status = bot.xray?.status?.();
-    const me = bot.getPlayerPosition?.();
+    const me = status?.playerPosition || null;
     const overlayButton = document.getElementById("minibia-copilot-xray-overlay-toggle");
     const overlayLabel = document.getElementById("minibia-copilot-xray-overlay-status");
     const floorSelect = document.getElementById("minibia-copilot-xray-floor-select");
     const formatFloorOffset = (floor) => {
-      if (!me || floor == null) {
-        return null;
-      }
-
+      if (!me || floor == null) return null;
       const offset = me.z - floor;
       return offset === 0 ? "0" : offset > 0 ? `+${offset}` : `${offset}`;
     };
@@ -72,47 +69,37 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     if (overlayButton) {
       overlayButton.textContent = status?.config?.overlayEnabled ? "Disable Overlay" : "Enable Overlay";
     }
-
     if (overlayLabel) {
+      const active = status?.overlayRunning ? "on" : "off";
       const floorLabel = status?.config?.selectedFloor == null
-        ? "all floors"
-        : `${formatFloorOffset(status.config.selectedFloor) ?? "?"}`;
-      overlayLabel.textContent = `${status?.config?.overlayEnabled ? "Overlay: on" : "Overlay: off"} • ${floorLabel}`;
+        ? "all floors" : formatFloorOffset(status.config.selectedFloor) ?? "?";
+      const source = status?.dataSource || "unavailable";
+      const count = status?.visibleCreatures?.length ?? 0;
+      overlayLabel.textContent = !status?.dataAvailable
+        ? `Overlay: ${active} · Sin coordenadas de criaturas (${source}). Ejecuta minibiaCopilot.xray.inspectSources()`
+        : `Overlay: ${active} · ${floorLabel} · ${count} criaturas · ${source}`;
+      if (status?.dataError) overlayLabel.textContent += ` · ${status.dataError}`;
     }
-
     if (floorSelect) {
-      const floors = Array.from(
-        new Set(
-          (status?.visibleCreatures || [])
-            .map((creature) => creature?.position?.z)
-            .filter((floor) => floor != null)
-        )
-      ).sort((a, b) => a - b);
-      const selectedFloor = status?.config?.selectedFloor;
-
-      if (selectedFloor != null && !floors.includes(selectedFloor)) {
-        floors.push(selectedFloor);
-        floors.sort((a, b) => a - b);
-      }
-
-      floorSelect.innerHTML = "";
-
-      const allOption = document.createElement("option");
-      allOption.value = "all";
-      allOption.textContent = "All floors";
-      floorSelect.appendChild(allOption);
-
-      floors.forEach((floor) => {
+      const floors = Array.from(new Set([
+        ...(status?.visibleCreatures || []),
+        ...(status?.overlayCreatures || []),
+      ].map(c => c?.position?.z).filter(Number.isInteger))).sort((a, b) => a - b);
+      const selected = status?.config?.selectedFloor;
+      if (selected != null && !floors.includes(selected)) floors.push(selected);
+      floors.sort((a, b) => a - b);
+      floorSelect.replaceChildren();
+      const all = document.createElement("option");
+      all.value = "all";
+      all.textContent = "All floors";
+      floorSelect.appendChild(all);
+      floors.forEach(floor => {
         const option = document.createElement("option");
         option.value = String(floor);
-        const offsetLabel = formatFloorOffset(floor);
-        option.textContent = offsetLabel == null
-          ? String(floor)
-          : offsetLabel;
+        option.textContent = formatFloorOffset(floor) ?? String(floor);
         floorSelect.appendChild(option);
       });
-
-      floorSelect.value = selectedFloor == null ? "all" : String(selectedFloor);
+      floorSelect.value = selected == null ? "all" : String(selected);
     }
   }
 
@@ -1109,8 +1096,8 @@ function refreshAntiBotStatus() {
     const list = document.getElementById("minibia-copilot-visible-creatures-list");
     if (!list) return;
 
-    const me = bot.getPlayerPosition?.();
     const status = bot.xray?.status?.();
+    const me = status?.playerPosition || null;
     const creatures = status?.visibleCreatures || [];
     const selectedFloor = status?.config?.selectedFloor;
     list.innerHTML = "";
@@ -1118,7 +1105,7 @@ function refreshAntiBotStatus() {
     if (!me) {
       const empty = document.createElement("div");
       empty.className = "mc-small-note";
-      empty.textContent = "Current position unavailable.";
+      empty.textContent = "Sin coordenadas del personaje. Ejecuta minibiaCopilot.xray.inspectSources() en la consola.";
       list.appendChild(empty);
       return;
     }
