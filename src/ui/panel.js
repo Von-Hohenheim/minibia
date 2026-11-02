@@ -194,10 +194,17 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
 
   function refreshRuneStatus() {
     const runeToggle = document.getElementById("minibia-copilot-rune-enabled");
-    const running = !!bot.rune?.status?.().running;
-
-    if (runeToggle) {
-      runeToggle.checked = running;
+    const statusLabel = document.getElementById("minibia-copilot-rune-status");
+    const status = bot.rune?.status?.();
+    if (runeToggle) runeToggle.checked = !!status?.running;
+    if (statusLabel) {
+      const stats = status?.stats;
+      const hp = stats?.hpPercent;
+      const mana = stats?.manaPercent;
+      const values = `HP ${hp == null ? "?" : Math.round(hp)}% · MP ${mana == null ? "?" : Math.round(mana)}%`;
+      statusLabel.textContent = status?.lastError
+        ? `Error: ${status.lastError}`
+        : (status?.running ? `Entrenando · ${values}` : `Inactivo · ${values}`);
     }
   }
 
@@ -1288,7 +1295,7 @@ function refreshAntiBotStatus() {
         z-index: 999999;
         top: 16px;
         right: 16px;
-        width: 400px;
+        width: 460px;
         max-width: calc(100vw - 32px);
         max-height: calc(100vh - 32px);
         display: flex;
@@ -2415,7 +2422,7 @@ function refreshAntiBotStatus() {
                     </select>
                   </label>
                 </div>
-                <div class="mc-small-note">Si ambas condiciones se cumplen, se usa primero esta tecla.</div>
+                <div class="mc-small-note">Si ambas condiciones se cumplen, se usa primero esta tecla. Recomendado: magia fuerte o UH.</div>
               </div>
               <div class="mc-field-grid">
                 <label class="mc-field" for="minibia-copilot-auto-heal-min-mana">
@@ -2444,6 +2451,7 @@ function refreshAntiBotStatus() {
                 <input type="checkbox" id="minibia-copilot-auto-heal-mana-enabled" />
                 <span>Usar pociones de maná (opcional)</span>
               </label>
+              <div class="mc-small-note">Personaje detectado automáticamente. Sin selector de tipo: cada tecla se identifica por su título. Curación prioritaria → normal → maná. Verifica que las runas se usen sobre tu personaje.</div>
               <div class="mc-small-note" id="minibia-copilot-auto-heal-status">Estado: esperando datos</div>
             </div>
           </div>
@@ -2531,14 +2539,33 @@ function refreshAntiBotStatus() {
                 <input type="checkbox" id="minibia-copilot-rune-enabled" />
                 <span>Activar ML Trainer</span>
               </label>
-              <label class="mc-field" for="minibia-copilot-rune-spell">
-                <span class="mc-field-label">Spell</span>
-                <input type="text" id="minibia-copilot-rune-spell" placeholder="adori vita vis" />
+              <label class="mc-field" for="minibia-copilot-rune-hotkey">
+                <span class="mc-field-label">Hechizo en hotbar</span>
+                <select id="minibia-copilot-rune-hotkey">
+                  <option value="1">F1</option>
+                  <option value="2">F2</option>
+                  <option value="3">F3</option>
+                  <option value="4">F4</option>
+                  <option value="5">F5</option>
+                  <option value="6">F6</option>
+                  <option value="7">F7</option>
+                  <option value="8">F8</option>
+                  <option value="9">F9</option>
+                  <option value="10">F10</option>
+                  <option value="11">F11</option>
+                  <option value="12">F12</option>
+                </select>
               </label>
-              <label class="mc-field" for="minibia-copilot-rune-mana">
-                <span class="mc-field-label">Mana</span>
-                <input type="number" id="minibia-copilot-rune-mana" min="0" placeholder="600" />
+              <label class="mc-field" for="minibia-copilot-rune-mana-percent">
+                <span class="mc-field-label">Usar con mana ≥ (%)</span>
+                <input type="number" id="minibia-copilot-rune-mana-percent" min="1" max="100" value="90" />
               </label>
+              <label class="mc-field" for="minibia-copilot-rune-hp-percent">
+                <span class="mc-field-label">Solo con HP ≥ (%)</span>
+                <input type="number" id="minibia-copilot-rune-hp-percent" min="1" max="100" value="90" />
+              </label>
+              <div class="mc-small-note" id="minibia-copilot-rune-status">Estado: inactivo</div>
+              <div class="mc-small-note">Coloca un hechizo en F1–F12. El entrenador no escribe en el chat ni usa objetos.</div>
             </div>
           </div>
 
@@ -2679,8 +2706,9 @@ function refreshAntiBotStatus() {
     enableDrag(panel);
     setPanelCollapsed(panel, getSavedPanelCollapsed());
 
-    const spellInput = panel.querySelector("#minibia-copilot-rune-spell");
-    const manaInput = panel.querySelector("#minibia-copilot-rune-mana");
+    const runeHotkeyInput = panel.querySelector("#minibia-copilot-rune-hotkey");
+    const runeManaPercentInput = panel.querySelector("#minibia-copilot-rune-mana-percent");
+    const runeHpPercentInput = panel.querySelector("#minibia-copilot-rune-hp-percent");
     const runeEnabledInput = panel.querySelector("#minibia-copilot-rune-enabled");
     const autoEatEnabledInput = panel.querySelector("#minibia-copilot-auto-eat-enabled");
     const autoEatHotkeyInput = panel.querySelector("#minibia-copilot-auto-eat-hotkey");
@@ -2931,34 +2959,44 @@ function refreshAntiBotStatus() {
       });
     }
 
-    if (spellInput) {
-      spellInput.value = bot.rune?.config?.runeSpellWords || "";
-      spellInput.addEventListener("change", () => {
-        bot.rune.updateConfig({ runeSpellWords: spellInput.value.trim() });
+    if (runeHotkeyInput) {
+      runeHotkeyInput.value = String(bot.rune?.config?.runeHotbarSlot ?? 3);
+      runeHotkeyInput.addEventListener("change", () => {
+        bot.rune?.updateConfig?.({ runeHotbarSlot: Number(runeHotkeyInput.value) });
+        refreshRuneStatus();
       });
     }
 
-    if (manaInput) {
-      manaInput.value = String(bot.rune?.config?.runeManaCost ?? 0);
-      manaInput.addEventListener("change", () => {
-        const runeManaCost = Math.max(0, Number(manaInput.value) || 0);
-        manaInput.value = String(runeManaCost);
-        bot.rune.updateConfig({ runeManaCost });
+    if (runeManaPercentInput) {
+      runeManaPercentInput.value = String(bot.rune?.config?.minManaPercent ?? 90);
+      runeManaPercentInput.addEventListener("change", () => {
+        const minManaPercent = Math.min(100, Math.max(1, Number(runeManaPercentInput.value) || 90));
+        runeManaPercentInput.value = String(minManaPercent);
+        bot.rune?.updateConfig?.({ minManaPercent });
+      });
+    }
+
+    if (runeHpPercentInput) {
+      runeHpPercentInput.value = String(bot.rune?.config?.minHpPercent ?? 90);
+      runeHpPercentInput.addEventListener("change", () => {
+        const minHpPercent = Math.min(100, Math.max(1, Number(runeHpPercentInput.value) || 90));
+        runeHpPercentInput.value = String(minHpPercent);
+        bot.rune?.updateConfig?.({ minHpPercent });
       });
     }
 
     if (runeEnabledInput) {
       runeEnabledInput.checked = !!bot.rune?.status?.().running;
       runeEnabledInput.addEventListener("change", () => {
-        const runeSpellWords = spellInput?.value?.trim() || bot.rune.config.runeSpellWords;
-        const runeManaCost = Math.max(0, Number(manaInput?.value) || bot.rune.config.runeManaCost || 0);
-
         if (runeEnabledInput.checked) {
-          bot.rune.start({ runeSpellWords, runeManaCost });
+          bot.rune?.start?.({
+            runeHotbarSlot: Number(runeHotkeyInput?.value || 3),
+            minManaPercent: Number(runeManaPercentInput?.value || 90),
+            minHpPercent: Number(runeHpPercentInput?.value || 90),
+          });
         } else {
-          bot.rune.stop();
+          bot.rune?.stop?.();
         }
-
         refreshRuneStatus();
       });
     }
@@ -3775,6 +3813,7 @@ function refreshAntiBotStatus() {
       refreshHuntStatus();
       refreshLootbagStatus();
       refreshAutoHealStatus();
+      refreshRuneStatus();
     }, 1000);
     bot.addCleanup(() => {
       window.clearInterval(snapshotTimerId);

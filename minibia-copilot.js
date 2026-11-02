@@ -2483,367 +2483,320 @@ window.__minibiaCopilotBundle.installPanicModule = function installPanicModule(b
     config,
   };
 };
+// Magic Level Trainer (rune.js) — integrado con Runtime Adapter.
+// No accede a window.gameClient ni utiliza bot.sendChat().
 window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
 window.__minibiaCopilotBundle.installRuneModule = function installRuneModule(bot) {
-  const configStorageKey = "minibiaCopilot.rune.config";
-  const state = {
-    running: false,
-    timerId: null,
-    autoEatRunning: false,
-    autoEatTimerId: null,
-    lastRuneAt: 0,
-    lastFoodAt: 0,
+  "use strict";
+
+  // Nueva clave: evita reutilizar configuraciones antiguas basadas en maná absoluto.
+  const configStorageKey = "minibiaCopilot.rune.config.v2";
+  const defaults = {
+    tickMs: 350,
+    runeHotbarSlot: 3,
+    minManaPercent: 90,
+    minHpPercent: 90,
+    runeCooldownMs: 3500,
+    confirmMs: 1500,
+    enabled: false,
   };
 
   const config = Object.assign(
-    {
-      tickMs: 1000,
-      minHpPercent: 50,
-      minFoodSeconds: 30,
-      autoEatEnabled: false,
-      eatHotbarSlot: 10,
-      eatCooldownMs: 60000,
-      runeSpellWords: "adori vita vis",
-      runeManaCost: 600,
-      runeCooldownMs: 3500,
-    },
-    bot.storage.get(configStorageKey, {})
+    {}, defaults, bot.storage?.get?.(configStorageKey, {}) || {}
   );
 
+  const state = {
+    running: false,
+    timerId: null,
+    pending: null,
+    lastRuneAt: 0,
+    lastAttemptAt: 0,
+    lastAction: null,
+    lastError: null,
+    failedAttempts: 0,
+  };
+
   function persistConfig() {
-    bot.storage.set(configStorageKey, { ...config });
+    bot.storage?.set?.(configStorageKey, { ...config });
+  }
+
+  function validSlot(value) {
+    const n = Number(value);
+    return Number.isInteger(n) && n >= 1 && n <= 12 ? n : null;
+  }
+
+  function percent(value) {
+    return typeof value === "number" && Number.isFinite(value) &&
+      value >= 0 && value <= 100 ? value : null;
+  }
+
+  function clamp(value, min, max, fallback) {
+    const n = Number(value);
+    return Number.isFinite(n)
+      ? Math.min(max, Math.max(min, n))
+      : fallback;
   }
 
   function readStats() {
-    const state = bot.getPlayerState();
+    let player = null;
+    try {
+      player = bot.runtimeAdapter?.getStats?.() || null;
+    } catch (error) {
+      state.lastError = `Lectura DOM: ${String(error)}`;
+    }
 
-    const hp = state
-      ? { current: state.health ?? 0, max: state.maxHealth ?? 0 }
+    const hp = player && Number.isFinite(player.health) &&
+      Number.isFinite(player.maxHealth) && player.maxHealth > 0 &&
+      player.health >= 0 && player.health <= player.maxHealth
+      ? { current: player.health, max: player.maxHealth }
       : null;
 
-    const mana = state
-      ? { current: state.mana ?? 0, max: state.maxMana ?? 0 }
-      : null;
+    const manaPercent = percent(player?.manaPercent);
+    const hpPercent = hp ? (hp.current / hp.max) * 100 : null;
 
-    const foodText =
-      document.querySelector('#skill-window div[skill="food"] .skill')?.textContent?.trim() ||
-      null;
+    // Lectura informativa; no usar como fuente de datos del GameClient.
+    const foodText = document.querySelector(
+      '#skill-window div[skill="food"] .skill'
+    )?.textContent?.trim() || null;
+    const foodMatch = foodText?.match(/^(\d{1,2}):(\d{2})$/);
+    const food = foodMatch
+      ? { text: foodText, seconds: Number(foodMatch[1]) * 60 + Number(foodMatch[2]) }
+      : { text: foodText, seconds: null };
 
-    let food = null;
-    if (foodText) {
-      const match = foodText.match(/^(\d{1,2}):(\d{2})$/);
-      food = match
-        ? {
-            text: foodText,
-            seconds: Number(match[1]) * 60 + Number(match[2]),
-          }
-        : { text: foodText, seconds: null };
-    }
-
-    return { hp, mana, food };
+    return {
+      name: player?.name ?? null,
+      hp,
+      hpPercent,
+      mana: null,
+      manaPercent,
+      food,
+      source: "runtime-adapter",
+    };
   }
 
-  function canMakeRune() {
-    const { hp, mana, food } = readStats();
-    if (!hp || !mana) return false;
+  function findSpellButton(slot = config.runeHotbarSlot) {
+    const number = validSlot(slot);
+    if (!number) return null;
 
-    const hpPercent = hp.max > 0 ? (hp.current / hp.max) * 100 : 0;
-    const enoughHp = hpPercent >= config.minHpPercent;
-    const enoughMana = mana.current >= config.runeManaCost;
-    const enoughFood = food?.seconds == null || food.seconds >= config.minFoodSeconds;
-    const cooldownReady = Date.now() - state.lastRuneAt >= config.runeCooldownMs;
-
-    return enoughHp && enoughMana && enoughFood && cooldownReady;
-  }
-
-  function isSated() {
-    const player = window.gameClient?.player;
-    const conditions = player?.conditions;
-
-    if (conditions?.has && conditions.SATED != null) {
-      return conditions.has(conditions.SATED);
-    }
-
-    const food = readStats().food;
-    if (food?.seconds != null) {
-      return food.seconds > 0;
-    }
-
-    return true;
-  }
-
-  function getOpenContainers() {
-    return Array.from(window.gameClient?.player?.__openedContainers || []);
-  }
-
-  function getItemDefinition(item) {
-    if (!item) return null;
-
-    return (
-      window.gameClient?.itemDefinitionsBySid?.[item.sid] ||
-      window.gameClient?.itemDefinitions?.[item.id] ||
-      null
-    );
-  }
-
-  function getItemName(item) {
-    const definition = getItemDefinition(item);
-    return definition?.properties?.name || item?.name || "";
-  }
-
-  function isFoodItem(item) {
-    const name = getItemName(item).toLowerCase();
-    return /(ham|meat|mushroom|fish|egg|pear|toast|shrimp|food)/i.test(name);
-  }
-
-  function getFoodSlots() {
-    return getOpenContainers().flatMap((container) =>
-      (container?.slots || [])
-        .filter((slot) => slot?.item && slot?.element && isFoodItem(slot.item))
-        .map((slot) => ({
-          container,
-          slot,
-          item: slot.item,
-          name: getItemName(slot.item),
-          count: slot.item.count || 0,
-        }))
-    );
-  }
-
-  function openSlotContextMenu(slot) {
-    if (!slot?.element) return false;
-
-    const rect = slot.element.getBoundingClientRect();
-    slot.element.dispatchEvent(
-      new MouseEvent("contextmenu", {
-        bubbles: true,
-        cancelable: true,
-        view: window,
-        button: 2,
-        buttons: 2,
-        clientX: rect.left + 5,
-        clientY: rect.top + 5,
-      })
-    );
-
-    return true;
-  }
-
-  function clickContainerUse() {
-    const menu = window.gameClient?.interface?.menuManager?.menus?.["container-menu"];
-    const root = menu?.element;
-    if (!root) return false;
-
-    const useEntry = Array.from(root.querySelectorAll("*")).find((element) =>
-      /^use$/i.test((element.textContent || "").trim())
-    );
-
-    if (!useEntry) {
-      return false;
-    }
-
-    useEntry.click();
-    return true;
-  }
-
-  function eatFromOpenContainers() {
-    const foodSlots = getFoodSlots().sort((a, b) => a.count - b.count);
-    const target = foodSlots[0];
-
-    if (!target) {
-      return false;
-    }
-
-    if (!openSlotContextMenu(target.slot)) {
-      return false;
-    }
-
-    const used = clickContainerUse();
-    if (used) {
-      state.lastFoodAt = Date.now();
-      bot.log("used food from open container", {
-        name: target.name,
-        count: target.count,
-        sid: target.item.sid,
+    const key = `F${number}`;
+    const matches = Array.from(document.querySelectorAll(".hotbar-item"))
+      .filter((element) => {
+        if (!element.isConnected || !element.getClientRects().length) return false;
+        const style = getComputedStyle(element);
+        if (style.display === "none" || style.visibility === "hidden") return false;
+        return element.querySelector(".hotbar-key")?.textContent?.trim() === key;
       });
+
+    // No escoger arbitrariamente si aparecen dos hotbars F3.
+    if (matches.length !== 1) return null;
+
+    const button = matches[0];
+    const title = String(button.getAttribute("title") || "").trim();
+
+    // Las entradas Use Item son objetos, runas consumibles o fluidos.
+    // Para entrenar ML se requiere un hechizo de la hotbar.
+    if (!title || /^use item$/i.test(title) || /^use on/i.test(title)) {
+      return null;
     }
 
-    return used;
+    return button;
   }
 
-  function tryEat() {
-    if (!config.autoEatEnabled) {
-      return false;
+  function inspectHotbarSlot(slot = config.runeHotbarSlot) {
+    const number = validSlot(slot);
+    if (!number) return [];
+    return Array.from(document.querySelectorAll(".hotbar-item"))
+      .filter((node) => node.querySelector(".hotbar-key")
+        ?.textContent?.trim() === `F${number}`)
+      .map((node) => ({
+        key: `F${number}`,
+        title: node.getAttribute("title") || "",
+        visible: !!(node.isConnected && node.getClientRects().length),
+        spellSupported: findSpellButton(number) === node,
+      }));
+  }
+
+  function canMakeRune(stats = readStats(), now = Date.now()) {
+    return !!(
+      stats.hp && stats.hp.current > 0 &&
+      stats.hpPercent !== null &&
+      stats.hpPercent >= config.minHpPercent &&
+      stats.manaPercent !== null &&
+      stats.manaPercent >= config.minManaPercent &&
+      state.pending === null &&
+      now - state.lastAttemptAt >= config.runeCooldownMs
+    );
+  }
+
+  function resolvePending(stats, now) {
+    const pending = state.pending;
+    if (!pending) return;
+    if (now - pending.attemptedAt < config.confirmMs) return;
+
+    // Hechizos de entrenamiento consumen maná. No basta con que click() no falle.
+    const decreased = stats.manaPercent !== null &&
+      pending.manaBefore !== null &&
+      stats.manaPercent < pending.manaBefore;
+
+    state.lastAction = {
+      key: pending.key,
+      title: pending.title,
+      at: new Date(pending.attemptedAt).toISOString(),
+      manaBefore: pending.manaBefore,
+      manaAfter: stats.manaPercent,
+      confirmed: decreased,
+    };
+    state.pending = null;
+
+    if (decreased) {
+      state.lastRuneAt = now;
+      state.failedAttempts = 0;
+    } else {
+      state.failedAttempts += 1;
+      if (state.failedAttempts >= 2) {
+        stop({ reason: "Dos intentos sin consumo de maná confirmado; entrenador detenido." });
+      }
     }
-
-    if (isSated()) {
-      return false;
-    }
-
-    if (Date.now() - state.lastFoodAt < config.eatCooldownMs) {
-      return false;
-    }
-
-    if (eatFromOpenContainers()) {
-      return true;
-    }
-
-    const slotIndex = Math.max(0, Number(config.eatHotbarSlot) - 1);
-    const clicked = bot.clickHotbar(slotIndex);
-
-    if (clicked) {
-      state.lastFoodAt = Date.now();
-      bot.log("clicked food hotbar slot", config.eatHotbarSlot);
-    }
-
-    return clicked;
   }
 
   function tryMakeRune() {
-    if (!canMakeRune()) {
+    const now = Date.now();
+    const stats = readStats();
+
+    resolvePending(stats, now);
+    if (!state.running || state.pending || !canMakeRune(stats, now)) return false;
+
+    const button = findSpellButton();
+    if (!button) {
+      stop({ reason: `No se detectó un único hechizo en F${config.runeHotbarSlot}.` });
       return false;
     }
 
-    const sent = bot.sendChat(config.runeSpellWords);
-    if (sent) {
-      state.lastRuneAt = Date.now();
+    state.pending = {
+      attemptedAt: now,
+      key: `F${config.runeHotbarSlot}`,
+      title: button.getAttribute("title") || "",
+      manaBefore: stats.manaPercent,
+    };
+    state.lastAttemptAt = now;
+
+    try {
+      button.click();
+      return true;
+    } catch (error) {
+      state.pending = null;
+      stop({ reason: `Error activando hotbar: ${String(error)}` });
+      return false;
     }
-
-    return sent;
   }
 
-  function scheduleNextTick() {
+  function tick() {
     if (!state.running) return;
-
-    state.timerId = window.setTimeout(() => {
-      tickRuneLoop();
-    }, config.tickMs);
-  }
-
-  function tickRuneLoop() {
-    if (!state.running) return;
-
-    tryMakeRune();
-    scheduleNextTick();
-  }
-
-  function scheduleNextAutoEatTick() {
-    if (!state.autoEatRunning) return;
-
-    state.autoEatTimerId = window.setTimeout(() => {
-      tickAutoEatLoop();
-    }, config.tickMs);
-  }
-
-  function tickAutoEatLoop() {
-    if (!state.autoEatRunning) return;
-
-    tryEat();
-    scheduleNextAutoEatTick();
+    try {
+      tryMakeRune();
+    } catch (error) {
+      stop({ reason: `Error del entrenador: ${String(error)}` });
+    } finally {
+      if (state.running) {
+        state.timerId = window.setTimeout(
+          tick, Math.max(250, Number(config.tickMs) || 350)
+        );
+      }
+    }
   }
 
   function start(overrides = {}) {
-    Object.assign(config, overrides);
-    persistConfig();
+    if (state.running) return false;
+    updateConfig({ ...overrides, enabled: false });
 
-    if (state.running) {
-      bot.log("rune loop already running");
+    const stats = readStats();
+    if (!stats.hp || stats.manaPercent === null) {
+      state.lastError = "Runtime Adapter no proporciona HP y maná porcentual.";
       return false;
     }
-
+    if (!findSpellButton()) {
+      state.lastError = `F${config.runeHotbarSlot} no es un hechizo válido o es ambiguo.`;
+      return false;
+    }
+    state.lastError = null;
+    state.failedAttempts = 0;
     state.running = true;
-    bot.log("rune loop started", { ...config });
-    tickRuneLoop();
+    config.enabled = true;
+    persistConfig();
+    tick();
     return true;
   }
 
-  function stop() {
+  function stop(options = {}) {
     state.running = false;
-
-    if (state.timerId != null) {
-      window.clearTimeout(state.timerId);
-      state.timerId = null;
-    }
-
-    bot.log("rune loop stopped");
+    if (state.timerId !== null) window.clearTimeout(state.timerId);
+    state.timerId = null;
+    state.pending = null;
+    config.enabled = false;
+    persistConfig();
+    if (options.reason) state.lastError = options.reason;
     return true;
   }
 
-  function startAutoEat(overrides = {}) {
-    Object.assign(config, overrides, { autoEatEnabled: true });
-    persistConfig();
-
-    if (state.autoEatRunning) {
-      bot.log("auto eat already running");
-      return false;
+  function updateConfig(next = {}) {
+    const patch = { ...next };
+    if (Object.prototype.hasOwnProperty.call(patch, "runeHotbarSlot")) {
+      patch.runeHotbarSlot = validSlot(patch.runeHotbarSlot) ?? config.runeHotbarSlot;
     }
-
-    state.autoEatRunning = true;
-    bot.log("auto eat started", { eatCooldownMs: config.eatCooldownMs });
-    tickAutoEatLoop();
-    return true;
-  }
-
-  function stopAutoEat() {
-    state.autoEatRunning = false;
-
-    if (state.autoEatTimerId != null) {
-      window.clearTimeout(state.autoEatTimerId);
-      state.autoEatTimerId = null;
+    if (Object.prototype.hasOwnProperty.call(patch, "minManaPercent")) {
+      patch.minManaPercent = clamp(patch.minManaPercent, 1, 100, config.minManaPercent);
     }
-
-    config.autoEatEnabled = false;
+    if (Object.prototype.hasOwnProperty.call(patch, "minHpPercent")) {
+      patch.minHpPercent = clamp(patch.minHpPercent, 1, 100, config.minHpPercent);
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, "runeCooldownMs")) {
+      patch.runeCooldownMs = clamp(patch.runeCooldownMs, 2000, 60000, config.runeCooldownMs);
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, "confirmMs")) {
+      patch.confirmMs = clamp(patch.confirmMs, 800, 10000, config.confirmMs);
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, "tickMs")) {
+      patch.tickMs = clamp(patch.tickMs, 250, 10000, config.tickMs);
+    }
+    // Nunca activar por un updateConfig aislado; solo start() inicia acciones.
+    delete patch.enabled;
+    Object.assign(config, patch);
     persistConfig();
-    bot.log("auto eat stopped");
-    return true;
+    return { ...config };
   }
 
   function status() {
     return {
       running: state.running,
-      autoEatRunning: state.autoEatRunning,
       config: { ...config },
       stats: readStats(),
       lastRuneAt: state.lastRuneAt,
-      lastFoodAt: state.lastFoodAt,
-      isSated: isSated(),
+      lastAttemptAt: state.lastAttemptAt,
+      lastAction: state.lastAction,
+      lastError: state.lastError,
+      pending: state.pending ? { ...state.pending } : null,
+      failedAttempts: state.failedAttempts,
+      hotbar: inspectHotbarSlot(),
     };
   }
 
-  function updateConfig(nextConfig = {}) {
-    Object.assign(config, nextConfig);
-    persistConfig();
-    bot.log("rune config updated", { ...config });
-    return { ...config };
-  }
-
-  if (config.autoEatEnabled) {
-    startAutoEat();
-  }
+  // APIs anteriores conservadas; alimentación pertenece al módulo Auto Eat.
+  const startAutoEat = (overrides = {}) => bot.eat?.start?.(overrides) ?? false;
+  const stopAutoEat = () => bot.eat?.stop?.() ?? false;
+  const tryEat = () => bot.eat?.tryEat?.() ?? false;
 
   bot.rune = {
-    start,
-    stop,
-    startAutoEat,
-    stopAutoEat,
-    status,
-    readStats,
-    canMakeRune,
-    tryMakeRune,
-    isSated,
-    tryEat,
-    getOpenContainers,
-    getFoodSlots,
-    eatFromOpenContainers,
+    start, stop, status, updateConfig, readStats,
+    canMakeRune, tryMakeRune, inspectHotbarSlot, findSpellButton,
+    startAutoEat, stopAutoEat, tryEat,
     config,
-    updateConfig,
   };
-
   bot.startRuneLoop = start;
   bot.stopRuneLoop = stop;
   bot.startAutoEat = startAutoEat;
   bot.stopAutoEat = stopAutoEat;
+  bot.addCleanup?.(() => stop());
 };
 window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
@@ -11670,10 +11623,17 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
 
   function refreshRuneStatus() {
     const runeToggle = document.getElementById("minibia-copilot-rune-enabled");
-    const running = !!bot.rune?.status?.().running;
-
-    if (runeToggle) {
-      runeToggle.checked = running;
+    const statusLabel = document.getElementById("minibia-copilot-rune-status");
+    const status = bot.rune?.status?.();
+    if (runeToggle) runeToggle.checked = !!status?.running;
+    if (statusLabel) {
+      const stats = status?.stats;
+      const hp = stats?.hpPercent;
+      const mana = stats?.manaPercent;
+      const values = `HP ${hp == null ? "?" : Math.round(hp)}% · MP ${mana == null ? "?" : Math.round(mana)}%`;
+      statusLabel.textContent = status?.lastError
+        ? `Error: ${status.lastError}`
+        : (status?.running ? `Entrenando · ${values}` : `Inactivo · ${values}`);
     }
   }
 
@@ -12764,7 +12724,7 @@ function refreshAntiBotStatus() {
         z-index: 999999;
         top: 16px;
         right: 16px;
-        width: 400px;
+        width: 460px;
         max-width: calc(100vw - 32px);
         max-height: calc(100vh - 32px);
         display: flex;
@@ -13891,7 +13851,7 @@ function refreshAntiBotStatus() {
                     </select>
                   </label>
                 </div>
-                <div class="mc-small-note">Si ambas condiciones se cumplen, se usa primero esta tecla.</div>
+                <div class="mc-small-note">Si ambas condiciones se cumplen, se usa primero esta tecla. Recomendado: magia fuerte o UH.</div>
               </div>
               <div class="mc-field-grid">
                 <label class="mc-field" for="minibia-copilot-auto-heal-min-mana">
@@ -13920,6 +13880,7 @@ function refreshAntiBotStatus() {
                 <input type="checkbox" id="minibia-copilot-auto-heal-mana-enabled" />
                 <span>Usar pociones de maná (opcional)</span>
               </label>
+              <div class="mc-small-note">Personaje detectado automáticamente. Sin selector de tipo: cada tecla se identifica por su título. Curación prioritaria → normal → maná. Verifica que las runas se usen sobre tu personaje.</div>
               <div class="mc-small-note" id="minibia-copilot-auto-heal-status">Estado: esperando datos</div>
             </div>
           </div>
@@ -14007,14 +13968,33 @@ function refreshAntiBotStatus() {
                 <input type="checkbox" id="minibia-copilot-rune-enabled" />
                 <span>Activar ML Trainer</span>
               </label>
-              <label class="mc-field" for="minibia-copilot-rune-spell">
-                <span class="mc-field-label">Spell</span>
-                <input type="text" id="minibia-copilot-rune-spell" placeholder="adori vita vis" />
+              <label class="mc-field" for="minibia-copilot-rune-hotkey">
+                <span class="mc-field-label">Hechizo en hotbar</span>
+                <select id="minibia-copilot-rune-hotkey">
+                  <option value="1">F1</option>
+                  <option value="2">F2</option>
+                  <option value="3">F3</option>
+                  <option value="4">F4</option>
+                  <option value="5">F5</option>
+                  <option value="6">F6</option>
+                  <option value="7">F7</option>
+                  <option value="8">F8</option>
+                  <option value="9">F9</option>
+                  <option value="10">F10</option>
+                  <option value="11">F11</option>
+                  <option value="12">F12</option>
+                </select>
               </label>
-              <label class="mc-field" for="minibia-copilot-rune-mana">
-                <span class="mc-field-label">Mana</span>
-                <input type="number" id="minibia-copilot-rune-mana" min="0" placeholder="600" />
+              <label class="mc-field" for="minibia-copilot-rune-mana-percent">
+                <span class="mc-field-label">Usar con mana ≥ (%)</span>
+                <input type="number" id="minibia-copilot-rune-mana-percent" min="1" max="100" value="90" />
               </label>
+              <label class="mc-field" for="minibia-copilot-rune-hp-percent">
+                <span class="mc-field-label">Solo con HP ≥ (%)</span>
+                <input type="number" id="minibia-copilot-rune-hp-percent" min="1" max="100" value="90" />
+              </label>
+              <div class="mc-small-note" id="minibia-copilot-rune-status">Estado: inactivo</div>
+              <div class="mc-small-note">Coloca un hechizo en F1–F12. El entrenador no escribe en el chat ni usa objetos.</div>
             </div>
           </div>
 
@@ -14155,8 +14135,9 @@ function refreshAntiBotStatus() {
     enableDrag(panel);
     setPanelCollapsed(panel, getSavedPanelCollapsed());
 
-    const spellInput = panel.querySelector("#minibia-copilot-rune-spell");
-    const manaInput = panel.querySelector("#minibia-copilot-rune-mana");
+    const runeHotkeyInput = panel.querySelector("#minibia-copilot-rune-hotkey");
+    const runeManaPercentInput = panel.querySelector("#minibia-copilot-rune-mana-percent");
+    const runeHpPercentInput = panel.querySelector("#minibia-copilot-rune-hp-percent");
     const runeEnabledInput = panel.querySelector("#minibia-copilot-rune-enabled");
     const autoEatEnabledInput = panel.querySelector("#minibia-copilot-auto-eat-enabled");
     const autoEatHotkeyInput = panel.querySelector("#minibia-copilot-auto-eat-hotkey");
@@ -14407,34 +14388,44 @@ function refreshAntiBotStatus() {
       });
     }
 
-    if (spellInput) {
-      spellInput.value = bot.rune?.config?.runeSpellWords || "";
-      spellInput.addEventListener("change", () => {
-        bot.rune.updateConfig({ runeSpellWords: spellInput.value.trim() });
+    if (runeHotkeyInput) {
+      runeHotkeyInput.value = String(bot.rune?.config?.runeHotbarSlot ?? 3);
+      runeHotkeyInput.addEventListener("change", () => {
+        bot.rune?.updateConfig?.({ runeHotbarSlot: Number(runeHotkeyInput.value) });
+        refreshRuneStatus();
       });
     }
 
-    if (manaInput) {
-      manaInput.value = String(bot.rune?.config?.runeManaCost ?? 0);
-      manaInput.addEventListener("change", () => {
-        const runeManaCost = Math.max(0, Number(manaInput.value) || 0);
-        manaInput.value = String(runeManaCost);
-        bot.rune.updateConfig({ runeManaCost });
+    if (runeManaPercentInput) {
+      runeManaPercentInput.value = String(bot.rune?.config?.minManaPercent ?? 90);
+      runeManaPercentInput.addEventListener("change", () => {
+        const minManaPercent = Math.min(100, Math.max(1, Number(runeManaPercentInput.value) || 90));
+        runeManaPercentInput.value = String(minManaPercent);
+        bot.rune?.updateConfig?.({ minManaPercent });
+      });
+    }
+
+    if (runeHpPercentInput) {
+      runeHpPercentInput.value = String(bot.rune?.config?.minHpPercent ?? 90);
+      runeHpPercentInput.addEventListener("change", () => {
+        const minHpPercent = Math.min(100, Math.max(1, Number(runeHpPercentInput.value) || 90));
+        runeHpPercentInput.value = String(minHpPercent);
+        bot.rune?.updateConfig?.({ minHpPercent });
       });
     }
 
     if (runeEnabledInput) {
       runeEnabledInput.checked = !!bot.rune?.status?.().running;
       runeEnabledInput.addEventListener("change", () => {
-        const runeSpellWords = spellInput?.value?.trim() || bot.rune.config.runeSpellWords;
-        const runeManaCost = Math.max(0, Number(manaInput?.value) || bot.rune.config.runeManaCost || 0);
-
         if (runeEnabledInput.checked) {
-          bot.rune.start({ runeSpellWords, runeManaCost });
+          bot.rune?.start?.({
+            runeHotbarSlot: Number(runeHotkeyInput?.value || 3),
+            minManaPercent: Number(runeManaPercentInput?.value || 90),
+            minHpPercent: Number(runeHpPercentInput?.value || 90),
+          });
         } else {
-          bot.rune.stop();
+          bot.rune?.stop?.();
         }
-
         refreshRuneStatus();
       });
     }
@@ -15251,6 +15242,7 @@ function refreshAntiBotStatus() {
       refreshHuntStatus();
       refreshLootbagStatus();
       refreshAutoHealStatus();
+      refreshRuneStatus();
     }, 1000);
     bot.addCleanup(() => {
       window.clearInterval(snapshotTimerId);
