@@ -222,7 +222,8 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
     const manaLabel = Number.isFinite(mana) ? `${mana}%` : "sin datos";
     const mode = !status?.running ? "Detenido" : status.monitorOnly ? "Solo monitor" : "Activo";
     const name = status?.stats?.name || "Sin personaje identificado";
-    statusLabel.textContent = `${mode} | ${name} | HP: ${hpLabel} | Maná: ${manaLabel} | Cura al ${status?.config?.minHpPercent ?? 60}% (F${status?.config?.hpHotbarSlot ?? 1})` +
+    const healType = status?.config?.healMode === "spell" ? "Magia" : "Poción";
+    statusLabel.textContent = `${mode} | ${name} | HP: ${hpLabel} | Maná: ${manaLabel} | Cura al ${status?.config?.minHpPercent ?? 60}% (${healType} F${status?.config?.hpHotbarSlot ?? 1})` +
       (status?.lastError ? ` | Error: ${status.lastError}` : "");
   }
 
@@ -2327,6 +2328,13 @@ function refreshAntiBotStatus() {
                   <span class="mc-field-label">Curar al llegar a vida (%):</span>
                   <input type="number" id="minibia-copilot-auto-heal-min-hp" min="0" max="100" step="1" placeholder="60" />
                 </label>
+                <label class="mc-field" for="minibia-copilot-auto-heal-mode">
+                  <span class="mc-field-label">Tipo de curación:</span>
+                  <select id="minibia-copilot-auto-heal-mode">
+                    <option value="potion">Poción (Use Item)</option>
+                    <option value="spell">Magia (hechizo asignado)</option>
+                  </select>
+                </label>
                 <label class="mc-field" for="minibia-copilot-auto-heal-hp-hotkey">
                   <span class="mc-field-label">Tecla de curación</span>
                   <select id="minibia-copilot-auto-heal-hp-hotkey">
@@ -2370,7 +2378,7 @@ function refreshAntiBotStatus() {
                 <input type="checkbox" id="minibia-copilot-auto-heal-mana-enabled" />
                 <span>Usar pociones de maná (opcional)</span>
               </label>
-              <div class="mc-small-note">Personaje: detección automática. Las teclas elegidas deben contener "Use Item". HP tiene prioridad.</div>
+              <div class="mc-small-note">Personaje: detección automática. Para HP selecciona Poción o Magia; para rellenar maná, la tecla debe contener una poción (Use Item). HP tiene prioridad. Si la magia no se reconoce, revisa el título de su botón de hotbar.</div>
               <div class="mc-small-note" id="minibia-copilot-auto-heal-status">Estado: esperando datos</div>
             </div>
           </div>
@@ -2700,6 +2708,7 @@ function refreshAntiBotStatus() {
     const autoHealEnabledInput = panel.querySelector("#minibia-copilot-auto-heal-enabled");
     const autoHealMinHpInput = panel.querySelector("#minibia-copilot-auto-heal-min-hp");
     const autoHealHpHotkeyInput = panel.querySelector("#minibia-copilot-auto-heal-hp-hotkey");
+    const autoHealModeInput = panel.querySelector("#minibia-copilot-auto-heal-mode");
     const autoHealMinManaInput = panel.querySelector("#minibia-copilot-auto-heal-min-mana");
     const autoHealManaEnabledInput = panel.querySelector("#minibia-copilot-auto-heal-mana-enabled");
     const autoHealManaHotkeyInput = panel.querySelector("#minibia-copilot-auto-heal-mana-hotkey");
@@ -3345,6 +3354,13 @@ function refreshAntiBotStatus() {
       });
     }
 
+    if (autoHealModeInput) {
+      autoHealModeInput.value = bot.heal?.config?.healMode === "spell" ? "spell" : "potion";
+      autoHealModeInput.addEventListener("change", () => {
+        bot.heal.updateConfig({ healMode: autoHealModeInput.value });
+      });
+    }
+
     if (autoHealHpHotkeyInput) {
       autoHealHpHotkeyInput.value = String(bot.heal?.config?.hpHotbarSlot ?? 1);
       autoHealHpHotkeyInput.addEventListener("change", () => {
@@ -3393,13 +3409,14 @@ function refreshAntiBotStatus() {
           Number(autoHealMinManaInput?.value ?? bot.heal.config.minManaPercent)
         ));
         const manaEnabled = !!autoHealManaEnabledInput?.checked;
+        const healMode = autoHealModeInput?.value === "spell" ? "spell" : "potion";
         const manaHotbarSlot = Math.min(
           12,
           Math.max(1, Number(autoHealManaHotkeyInput?.value) || bot.heal.config.manaHotbarSlot || 1)
         );
 
         if (autoHealEnabledInput.checked) {
-          bot.heal.start({ minHpPercent, hpHotbarSlot, minManaPercent, manaEnabled, manaHotbarSlot });
+          bot.heal.start({ minHpPercent, hpHotbarSlot, healMode, minManaPercent, manaEnabled, manaHotbarSlot });
         } else {
           bot.heal.stop();
         }

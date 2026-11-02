@@ -12,6 +12,7 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
     minHp: 250,               // Campo antiguo, conservado para compatibilidad.
     minHpPercent: 60,         // Porcentaje real que controla Auto Heal.
     hpHotbarSlot: 1,
+    healMode: "potion",         // potion: Use Item; spell: magia en hotbar.
     minMana: 150,              // Conservado para compatibilidad; requiere maná absoluto.
     minManaPercent: 25,        // El Runtime Adapter actual solo proporciona porcentaje.
     manaEnabled: false,        // Evita consumir pociones de maná sin autorización explícita.
@@ -20,6 +21,7 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
   };
 
   const config = Object.assign({}, defaults, bot.storage.get(configStorageKey, {}) || {});
+  config.healMode = config.healMode === "spell" ? "spell" : "potion";
   const state = {
     running: false,
     monitorOnly: false,
@@ -43,6 +45,10 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
   function normalizeHotbarSlot(value) {
     const slot = Number(value);
     return Number.isInteger(slot) && slot >= 1 && slot <= 12 ? slot : null;
+  }
+
+  function normalizeHealMode(value) {
+    return value === "spell" ? "spell" : "potion";
   }
 
   function boundedNumber(value, min, max) {
@@ -105,6 +111,7 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
       maxMana: stats.mana?.max ?? null,
       manaPercent: stats.manaPercent,
       minHpPercent: hpLimit,
+      healMode: normalizeHealMode(config.healMode),
       minHp: config.minHp, // Compatibilidad, no controla el disparador.
       minManaPercent: config.minManaPercent,
       shouldHeal: hpRequired,
@@ -114,22 +121,47 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
     };
   }
 
-  function findHotbarButton(slot) {
+  function isVisibleHotbarButton(node) {
+    if (!node?.isConnected || node.getClientRects().length === 0) return false;
+    const style = getComputedStyle(node);
+    return style.display !== "none" && style.visibility !== "hidden";
+  }
+
+  function matchesHealMode(node, mode) {
+    const title = String(node.getAttribute("title") || "").trim();
+    if (mode === "spell") {
+      // Solo permitir acciones identificadas explícitamente como hechizos.
+      // No suponer que cualquier botón distinto de Use Item es un hechizo.
+      return /spell|hechizo|magia|cast/i.test(title);
+    }
+    return title === "Use Item";
+  }
+
+  function findHotbarButton(slot, mode = "potion") {
     const normalized = normalizeHotbarSlot(slot);
     if (!normalized) return null;
     const hotkey = "F" + normalized;
-
     const found = Array.from(document.querySelectorAll(".hotbar-item"))
-      .filter((node) => {
-        if (!node.isConnected || node.getClientRects().length === 0) return false;
-        const style = getComputedStyle(node);
-        if (style.display === "none" || style.visibility === "hidden") return false;
-        if (node.getAttribute("title") !== "Use Item") return false;
-        return node.querySelector(".hotbar-key")?.textContent?.trim() === hotkey;
-      });
-
-    // Nunca escoger al azar entre varios botones iguales.
+      .filter((node) => isVisibleHotbarButton(node) &&
+        node.querySelector(".hotbar-key")?.textContent?.trim() === hotkey &&
+        matchesHealMode(node, mode));
+    // Evitar selecciones ambiguas (varias hotbars o presets visibles).
     return found.length === 1 ? found[0] : null;
+  }
+
+  function inspectHotbarSlot(slot) {
+    const normalized = normalizeHotbarSlot(slot);
+    if (!normalized) return [];
+    return Array.from(document.querySelectorAll(".hotbar-item"))
+      .filter((node) => isVisibleHotbarButton(node) &&
+        node.querySelector(".hotbar-key")?.textContent?.trim() === "F" + normalized)
+      .map((node) => ({
+        key: "F" + normalized,
+        title: node.getAttribute("title"),
+        text: node.textContent?.trim().slice(0, 90) || "",
+        potionSupported: matchesHealMode(node, "potion"),
+        spellSupported: matchesHealMode(node, "spell"),
+      }));
   }
 
   function readItemCount(button) {
@@ -138,14 +170,21 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
   }
 
   function attempt(kind, slot, stats, now) {
-    const button = findHotbarButton(slot);
+    const actionType = kind === "hp"
+      ? normalizeHealMode(config.healMode)
+      : "potion";
+    const button = findHotbarButton(slot, actionType);
     if (!button) {
-      stop({ reason: "No se encontró un único botón Use Item en F" + slot });
+      stop({ reason: "No hay un único botón de " +
+        (actionType === "spell" ? "magia" : "poción") +
+        " compatible con F" + slot +
+        ". Inspecciona el slot con heal.inspectHotbarSlot(" + slot + ")." });
       return false;
     }
 
-    const countBefore = readItemCount(button);
-    if (countBefore === 0) {
+    // Las magias no consumen ítems; confirmar por variación de HP.
+    const countBefore = actionType === "potion" ? readItemCount(button) : null;
+    if (actionType === "potion" && countBefore === 0) {
       stop({ reason: "No quedan objetos en F" + slot });
       return false;
     }
@@ -153,6 +192,8 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
     state.pendingAttempt = {
       kind,
       slot,
+      actionType,
+      buttonTitle: button.getAttribute("title"),
       attemptedAt: now,
       hpBefore: stats.hp?.current ?? null,
       manaBefore: stats.mana?.current ?? null,
@@ -180,8 +221,11 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
       return true;
     }
 
-    const countAfter = readItemCount(findHotbarButton(pending.slot));
-    const itemConsumed = pending.countBefore !== null && countAfter !== null &&
+    const countAfter = pending.actionType === "potion"
+      ? readItemCount(findHotbarButton(pending.slot, "potion"))
+      : null;
+    const itemConsumed = pending.actionType === "potion" &&
+      pending.countBefore !== null && countAfter !== null &&
       countAfter < pending.countBefore;
     const hpIncreased = stats.hp && pending.hpBefore !== null &&
       stats.hp.current > pending.hpBefore;
@@ -196,6 +240,8 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
     state.lastAction = {
       kind: pending.kind,
       slot: pending.slot,
+      actionType: pending.actionType,
+      buttonTitle: pending.buttonTitle,
       attemptedAt: new Date(pending.attemptedAt).toISOString(),
       hpBefore: pending.hpBefore,
       hpAfter: stats.hp?.current ?? null,
@@ -226,6 +272,7 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
       stats.hp && stats.hp.current > 0 && stats.hp.current < stats.hp.max &&
       (stats.hp.current / stats.hp.max) * 100 <= limit &&
       normalizeHotbarSlot(config.hpHotbarSlot) &&
+      !(normalizeHealMode(config.healMode) === "spell" && stats.manaPercent === 0) &&
       !state.pendingAttempt &&
       now - state.lastHpAttemptAt >= Math.max(3000, Number(config.healCooldownMs) || 0)
     );
@@ -293,13 +340,23 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
       state.lastError = "No hay HP válido en Runtime Adapter";
       return false;
     }
-    if (!findHotbarButton(config.hpHotbarSlot)) {
+    const actionType = normalizeHealMode(config.healMode);
+    if (!findHotbarButton(config.hpHotbarSlot, actionType)) {
       config.enabled = false;
       persistConfig();
-      state.lastError = "El slot HP no es un botón Use Item visible y único";
+      state.lastError = "F" + config.hpHotbarSlot +
+        " no tiene un control compatible con " +
+        (actionType === "spell" ? "Magia" : "Poción") +
+        ". Consulta heal.inspectHotbarSlot(" + config.hpHotbarSlot + ").";
       return false;
     }
-    if (config.manaEnabled && !findHotbarButton(config.manaHotbarSlot)) {
+    if (config.manaEnabled && config.manaHotbarSlot === config.hpHotbarSlot) {
+      config.enabled = false;
+      persistConfig();
+      state.lastError = "Configura teclas diferentes para curación y maná";
+      return false;
+    }
+    if (config.manaEnabled && !findHotbarButton(config.manaHotbarSlot, "potion")) {
       config.enabled = false;
       persistConfig();
       state.lastError = "El slot de maná no es un botón Use Item visible y único";
@@ -369,6 +426,9 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
         patch[prop] = Math.max(0, Number(patch[prop]) || 0);
       }
     }
+    if (Object.prototype.hasOwnProperty.call(patch, "healMode")) {
+      patch.healMode = normalizeHealMode(patch.healMode);
+    }
     if (Object.prototype.hasOwnProperty.call(patch, "minHpPercent")) {
       patch.minHpPercent = Math.min(100, Math.max(0, Number(patch.minHpPercent) || 0));
     }
@@ -394,7 +454,7 @@ window.__minibiaCopilotBundle.installHealModule = function installHealModule(bot
   bot.heal = {
     start, stop, status, updateConfig, readStats, evaluateDom, tryHeal,
     canUseHpHeal, canUseManaHeal, triggerHpHeal, triggerManaHeal,
-    normalizeHotbarSlot, config,
+    normalizeHotbarSlot, inspectHotbarSlot, config,
     // Alias de compatibilidad: todos usan un único temporizador.
     domMonitor: {
       start: startMonitor,
