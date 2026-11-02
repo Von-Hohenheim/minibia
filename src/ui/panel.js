@@ -79,7 +79,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
       const source = status?.dataSource || "unavailable";
       const count = status?.visibleCreatures?.length ?? 0;
       overlayLabel.textContent = !status?.dataAvailable
-        ? `X-Ray sin coordenadas (${source}) · Battle List: ${status?.battleListCreatures?.length ?? 0} entradas visibles`
+        ? `X-Ray sin coordenadas (${source}) · Battle ${status?.battleListWindowVisible ? 'abierta' : 'cerrada'}: ${status?.battleListCreatures?.length ?? 0} entradas en DOM${!status?.battleListWindowVisible ? (status?.battleListUpdatesWhileHiddenConfirmed ? ' · cambios detectados' : ' · actualización sin verificar') : ''}`
         : `Overlay: ${active} · ${floorLabel} · ${count} criaturas · ${source}`;
       if (status?.dataError) overlayLabel.textContent += ` · ${status.dataError}`;
     }
@@ -1115,28 +1115,31 @@ function refreshAntiBotStatus() {
       if (!status?.battleListWindowVisible) {
         const hint = document.createElement("div");
         hint.className = "mc-small-note";
-        hint.textContent = "Abre la ventana Battle para mostrar las entradas disponibles.";
+        hint.textContent = entries.length
+          ? (status?.battleListUpdatesWhileHiddenConfirmed
+            ? "Battle cerrada · cambios en las filas detectados tras el cierre."
+            : "Battle cerrada · filas presentes; aún no se confirma que sigan actualizándose.")
+          : "Battle cerrada · no hay filas de criaturas disponibles en el HTML.";
         list.appendChild(hint);
-      } else if (!entries.length) {
+      }
+      if (entries.length === 0) {
         const hint = document.createElement("div");
         hint.className = "mc-small-note";
-        hint.textContent = "Battle List no muestra criaturas en este momento.";
+        hint.textContent = "Battle List no contiene criaturas en este momento.";
         list.appendChild(hint);
       } else {
         entries.forEach((entry) => {
           const row = document.createElement("div");
           row.className = "mc-creature-row";
-
           const name = document.createElement("div");
           name.className = "mc-creature-name";
           name.textContent = entry.name;
           row.appendChild(name);
-
           const meta = document.createElement("div");
           meta.className = "mc-small-note";
           const info = [
             entry.detail,
-            entry.healthText ? `${entry.healthText} HP` : null,
+            entry.healthText ? `${entry.healthText} HP` : "HP no disponible",
             `ID ${entry.id}`,
           ].filter(Boolean);
           meta.textContent = info.join(" · ");

@@ -1445,7 +1445,14 @@ window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot
   const overlayRootId = "minibia-copilot-xray-overlay";
   const overlayStyleId = "minibia-copilot-xray-overlay-style";
   const refreshMs = 350;
-  const state = { running: false, timerId: null, lastError: null, provider: null };
+  const state = {
+    running: false, timerId: null, lastError: null, provider: null,
+    battleDomSignature: null,
+    battleHiddenSinceAt: null,
+    battleLastChangedWhileHiddenAt: null,
+    battleHiddenChangesObserved: 0,
+    battleWasVisible: null,
+  };
   const config = Object.assign({
     overlayEnabled: false,
     selectedFloor: null,
@@ -1505,45 +1512,73 @@ window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot
   // Se mantiene independiente de getVisibleCreatures() para no alterar Panic/Attack.
   function getBattleListSnapshot() {
     const windowEl = document.querySelector("#battle-window");
-    const windowVisible = !!(windowEl && windowEl.isConnected &&
+    const windowFound = !!(windowEl && windowEl.isConnected);
+    const windowVisible = !!(windowFound &&
       windowEl.getClientRects().length &&
       window.getComputedStyle(windowEl).visibility !== "hidden" &&
       window.getComputedStyle(windowEl).display !== "none");
 
-    if (!windowVisible) {
-      return { windowFound: !!windowEl, windowVisible: false, entries: [] };
-    }
-
-    const rows = Array.from(windowEl.querySelectorAll(
-      '.battle-window-target-wrapper[id]'
-    )).slice(0, 200);
+    // Aunque Battle esté con display:none, sus filas siguen en el DOM.
+    // No filtrar por getClientRects() de cada fila: los elementos ocultos
+    // tampoco tienen rectángulos, pero sus textos pueden seguir disponibles.
+    const rows = windowFound
+      ? Array.from(windowEl.querySelectorAll('.battle-window-target-wrapper[id]')).slice(0, 200)
+      : [];
     const seen = new Set();
     const entries = [];
     for (const row of rows) {
-      // El cliente utiliza IDs numéricos para las filas reales.
       const id = String(row.id || "").trim();
-      if (!/^\d+$/.test(id) || seen.has(id) ||
-          !row.isConnected || !row.getClientRects().length) continue;
-      const name = row.querySelector('.battle-window-target-title')?.textContent?.trim() || '';
-      if (!name || name === '???') continue;
+      if (!/^\d+$/.test(id) || seen.has(id) || !row.isConnected) continue;
+      const name = row.querySelector('.battle-window-target-title')?.textContent?.trim() || "";
+      if (!name || name === "???") continue;
       seen.add(id);
-      const detail = row.querySelector('.battle-window-target-sub')?.textContent?.trim() || '';
-      const rawHealth = row.querySelector('.battle-window-bar-wrapper .bar-text')?.textContent?.trim() || '';
+      const detail = row.querySelector('.battle-window-target-sub')?.textContent?.trim() || "";
+      const rawHealth = row.querySelector('.battle-window-bar-wrapper .bar-text')?.textContent?.trim() || "";
       const match = rawHealth.match(/^(\d+)\s*\/\s*(\d+)$/);
       entries.push({
-        id,
-        name,
-        detail,
+        id, name, detail,
         health: match ? Number(match[1]) : null,
         maxHealth: match ? Number(match[2]) : null,
-        healthText: rawHealth && rawHealth !== '???' ? rawHealth : null,
-        // Sin datos de posición ni clasificación fiable de criatura.
+        healthText: rawHealth && rawHealth !== "???" ? rawHealth : null,
         position: null,
         type: null,
         source: 'battle-list-dom',
       });
     }
-    return { windowFound: true, windowVisible: true, entries };
+
+    // Cambios en filas o HP con Battle cerrada sirven como evidencia
+    // de actualización. Que no haya cambios NO prueba que estén obsoletas.
+    const signature = JSON.stringify(entries.map(e => [e.id,e.name,e.detail,e.healthText]));
+    if (windowVisible) {
+      state.battleHiddenSinceAt = null;
+      state.battleLastChangedWhileHiddenAt = null;
+      state.battleHiddenChangesObserved = 0;
+    } else if (windowFound) {
+      if (state.battleWasVisible !== false || state.battleHiddenSinceAt == null) {
+        state.battleHiddenSinceAt = Date.now();
+        state.battleLastChangedWhileHiddenAt = null;
+        state.battleHiddenChangesObserved = 0;
+      } else if (state.battleDomSignature !== null && state.battleDomSignature !== signature) {
+        state.battleLastChangedWhileHiddenAt = Date.now();
+        state.battleHiddenChangesObserved += 1;
+      }
+    } else {
+      state.battleHiddenSinceAt = null;
+      state.battleLastChangedWhileHiddenAt = null;
+      state.battleHiddenChangesObserved = 0;
+    }
+    state.battleDomSignature = signature;
+    state.battleWasVisible = windowVisible;
+    return {
+      windowFound,
+      windowVisible,
+      entries,
+      entriesInDom: entries.length,
+      hiddenSinceAt: state.battleHiddenSinceAt,
+      lastChangedWhileHiddenAt: state.battleLastChangedWhileHiddenAt,
+      hiddenChangesObserved: state.battleHiddenChangesObserved,
+      updatesWhileHiddenConfirmed: !windowVisible && state.battleHiddenChangesObserved > 0,
+    };
   }
 
   function getBattleListCreatures() {
@@ -1556,7 +1591,11 @@ window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot
       ...snapshot,
       count: snapshot.entries.length,
       hasCoordinates: false,
-      note: 'Solo criaturas mostradas en Battle List; no informa posiciones ni otros pisos.',
+      note: !snapshot.windowVisible && snapshot.entries.length
+        ? (snapshot.updatesWhileHiddenConfirmed
+          ? 'Hay cambios en el DOM de Battle List con la ventana cerrada. No ofrece coordenadas ni otros pisos.'
+          : 'Las filas siguen en el DOM con Battle cerrada, pero no se ha comprobado que sigan actualizándose.')
+        : 'Solo lee entradas de Battle List; no informa posiciones ni otros pisos.', 
     };
   }
 
@@ -1836,6 +1875,10 @@ window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot
       overlayCreatures: overlayCreaturesFrom(data).map(formatCreature),
       battleListCreatures: battleList.entries,
       battleListWindowVisible: battleList.windowVisible,
+      battleListWindowFound: battleList.windowFound,
+      battleListUpdatesWhileHiddenConfirmed: battleList.updatesWhileHiddenConfirmed,
+      battleListHiddenChangesObserved: battleList.hiddenChangesObserved,
+      battleListLastChangedWhileHiddenAt: battleList.lastChangedWhileHiddenAt,
       playerPosition: me,
       dataSource: data.source,
       dataAvailable: data.available,
@@ -11555,7 +11598,7 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
       const source = status?.dataSource || "unavailable";
       const count = status?.visibleCreatures?.length ?? 0;
       overlayLabel.textContent = !status?.dataAvailable
-        ? `X-Ray sin coordenadas (${source}) · Battle List: ${status?.battleListCreatures?.length ?? 0} entradas visibles`
+        ? `X-Ray sin coordenadas (${source}) · Battle ${status?.battleListWindowVisible ? 'abierta' : 'cerrada'}: ${status?.battleListCreatures?.length ?? 0} entradas en DOM${!status?.battleListWindowVisible ? (status?.battleListUpdatesWhileHiddenConfirmed ? ' · cambios detectados' : ' · actualización sin verificar') : ''}`
         : `Overlay: ${active} · ${floorLabel} · ${count} criaturas · ${source}`;
       if (status?.dataError) overlayLabel.textContent += ` · ${status.dataError}`;
     }
@@ -12591,28 +12634,31 @@ function refreshAntiBotStatus() {
       if (!status?.battleListWindowVisible) {
         const hint = document.createElement("div");
         hint.className = "mc-small-note";
-        hint.textContent = "Abre la ventana Battle para mostrar las entradas disponibles.";
+        hint.textContent = entries.length
+          ? (status?.battleListUpdatesWhileHiddenConfirmed
+            ? "Battle cerrada · cambios en las filas detectados tras el cierre."
+            : "Battle cerrada · filas presentes; aún no se confirma que sigan actualizándose.")
+          : "Battle cerrada · no hay filas de criaturas disponibles en el HTML.";
         list.appendChild(hint);
-      } else if (!entries.length) {
+      }
+      if (entries.length === 0) {
         const hint = document.createElement("div");
         hint.className = "mc-small-note";
-        hint.textContent = "Battle List no muestra criaturas en este momento.";
+        hint.textContent = "Battle List no contiene criaturas en este momento.";
         list.appendChild(hint);
       } else {
         entries.forEach((entry) => {
           const row = document.createElement("div");
           row.className = "mc-creature-row";
-
           const name = document.createElement("div");
           name.className = "mc-creature-name";
           name.textContent = entry.name;
           row.appendChild(name);
-
           const meta = document.createElement("div");
           meta.className = "mc-small-note";
           const info = [
             entry.detail,
-            entry.healthText ? `${entry.healthText} HP` : null,
+            entry.healthText ? `${entry.healthText} HP` : "HP no disponible",
             `ID ${entry.id}`,
           ].filter(Boolean);
           meta.textContent = info.join(" · ");
