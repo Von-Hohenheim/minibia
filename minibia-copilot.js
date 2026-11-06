@@ -1444,6 +1444,9 @@ window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot
   const configStorageKey = "minibiaCopilot.xray.config";
   const overlayRootId = "minibia-copilot-xray-overlay";
   const overlayStyleId = "minibia-copilot-xray-overlay-style";
+  const radarRootId = "minibia-copilot-xray-radar";
+  const radarStyleId = "minibia-copilot-xray-radar-style";
+  const radarRefreshMs = 800;
   const refreshMs = 350;
   const state = {
     running: false, timerId: null, lastError: null, provider: null,
@@ -1452,10 +1455,22 @@ window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot
     battleLastChangedWhileHiddenAt: null,
     battleHiddenChangesObserved: 0,
     battleWasVisible: null,
+    radarRunning: false,
+    radarTimerId: null,
+    radarSeenIds: new Set(),
+    radarBaselineDone: false,
+    radarAlertsAt: new Map(),
+    radarLastAlert: null,
+    radarLastRenderAt: null,
+    radarDragCleanup: null,
+    radarToastTimerId: null,
   };
   const config = Object.assign({
     overlayEnabled: false,
     selectedFloor: null,
+    radarEnabled: false,
+    playerAlertsEnabled: false,
+    radarPosition: null,
   }, bot.storage?.get?.(configStorageKey, {}) || {});
 
   function floorValue(value) {
@@ -1465,6 +1480,13 @@ window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot
   }
 
   config.selectedFloor = floorValue(config.selectedFloor);
+  config.radarEnabled = config.radarEnabled === true;
+  config.playerAlertsEnabled = config.playerAlertsEnabled === true;
+  if (!config.radarPosition ||
+      !Number.isFinite(config.radarPosition.left) ||
+      !Number.isFinite(config.radarPosition.top)) {
+    config.radarPosition = null;
+  }
   function save() { bot.storage?.set?.(configStorageKey, { ...config }); }
   function normalizedName(value) { return String(value || "").trim().toLowerCase(); }
 
@@ -1789,6 +1811,322 @@ window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot
     }
   }
 
+
+// Radar independiente, basado SOLO en las filas existentes en Battle List.
+// Battle puede estar con display:none; no se deducen criaturas ocultas ni coordenadas.
+function isIdentifiedPlayer(entry) {
+  return /\bLVL\s+\d+\s*\[(?:EK|ED|MS|RP|KNIGHT|DRUID|PALADIN|SORCERER)\]/i
+    .test(String(entry.detail || ""));
+}
+
+function getRadarEntries() {
+  return getBattleListSnapshot().entries.map(entry => ({
+    ...entry,
+    kind: isIdentifiedPlayer(entry) ? "player" : "unknown",
+  }));
+}
+
+function clampRadarPosition(left, top, root) {
+  const rect = root?.getBoundingClientRect?.();
+  const width = rect?.width || 280;
+  const height = rect?.height || 190;
+  return {
+    left: Math.max(0, Math.min(Math.round(left), Math.max(0, (window.innerWidth || 900) - width))),
+    top: Math.max(0, Math.min(Math.round(top), Math.max(0, (window.innerHeight || 600) - Math.min(height, 90)))),
+  };
+}
+
+function setRadarPosition(left, top, persist = true) {
+  const root = document.getElementById(radarRootId);
+  const next = clampRadarPosition(Number(left) || 0, Number(top) || 0, root);
+  if (root) {
+    root.style.left = `${next.left}px`;
+    root.style.top = `${next.top}px`;
+  }
+  if (persist) {
+    config.radarPosition = next;
+    save();
+  }
+  return next;
+}
+
+function ensureRadar() {
+  if (!document.getElementById(radarStyleId)) {
+    const style = document.createElement("style");
+    style.id = radarStyleId;
+    style.textContent = `
+      #${radarRootId}{position:fixed;left:18px;top:110px;width:280px;max-width:calc(100vw - 12px);
+        z-index:1000001;background:rgba(12,19,31,.96);color:#e7edf5;border:1px solid #3c5266;
+        border-radius:12px;box-shadow:0 12px 38px rgba(0,0,0,.55);font:12px/1.4 Verdana,sans-serif;
+        overflow:hidden;pointer-events:auto;box-sizing:border-box}
+      #${radarRootId} .mc-xray-radar-head{display:flex;align-items:center;gap:8px;padding:11px 12px;
+        background:linear-gradient(120deg,#1e3449,#112333);cursor:move;user-select:none;touch-action:none}
+      #${radarRootId} .mc-xray-radar-title{font-weight:700;letter-spacing:.5px;flex:1}
+      #${radarRootId} .mc-xray-radar-count{color:#c1d8e8;font-weight:700}
+      #${radarRootId} .mc-xray-radar-close{background:none;color:#d5e2ef;border:1px solid #526b81;
+        border-radius:6px;cursor:pointer;font-size:16px;line-height:1;padding:2px 7px}
+      #${radarRootId} .mc-xray-radar-sub{padding:7px 12px;color:#a8bed0;border-bottom:1px solid #314556;
+        font-size:10px;min-height:15px}
+      #${radarRootId} .mc-xray-radar-items{overflow-y:auto;max-height:min(360px,45vh);scrollbar-width:thin}
+      #${radarRootId} .mc-xray-radar-row{padding:8px 11px;border-bottom:1px solid rgba(110,139,163,.2)}
+      #${radarRootId} .mc-xray-radar-line{display:flex;align-items:center;gap:7px;min-width:0}
+      #${radarRootId} .mc-xray-radar-dot{width:7px;height:7px;border-radius:50%;background:#6c8899;flex:none}
+      #${radarRootId} .mc-xray-radar-row[data-kind="player"] .mc-xray-radar-dot{background:#f2ba68}
+      #${radarRootId} .mc-xray-radar-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+        flex:1;font-weight:600}
+      #${radarRootId} .mc-xray-radar-hp{color:#c9dded;font-size:10px;white-space:nowrap}
+      #${radarRootId} .mc-xray-radar-meta{color:#8babc0;font-size:10px;padding-left:14px;margin-top:3px}
+      #${radarRootId} .mc-xray-radar-track{height:3px;border-radius:5px;background:#2c3d4b;
+        overflow:hidden;margin:5px 0 0 14px}
+      #${radarRootId} .mc-xray-radar-fill{height:100%;background:#70d4a1}
+      #${radarRootId} .mc-xray-radar-empty{padding:14px 12px;color:#b2c5d3}
+      #${radarRootId} .mc-xray-radar-footer{color:#809aad;font-size:10px;padding:7px 12px}
+      #${radarRootId} .mc-xray-radar-alert{padding:8px 12px;background:#493225;color:#ffe1b1;
+        border-top:1px solid #a7763a;font-weight:600}
+    `;
+    document.head.appendChild(style);
+  }
+
+  let root = document.getElementById(radarRootId);
+  if (root) return root;
+
+  root = document.createElement("section");
+  root.id = radarRootId;
+  root.setAttribute("aria-label", "Radar de Battle List");
+  const header = document.createElement("div");
+  header.className = "mc-xray-radar-head";
+  const title = document.createElement("span");
+  title.className = "mc-xray-radar-title";
+  title.textContent = "RADAR · BATTLE";
+  const count = document.createElement("span");
+  count.className = "mc-xray-radar-count";
+  count.textContent = "0";
+  const close = document.createElement("button");
+  close.type = "button";
+  close.className = "mc-xray-radar-close";
+  close.title = "Ocultar radar";
+  close.setAttribute("aria-label", "Ocultar radar");
+  close.textContent = "×";
+  close.addEventListener("click", () => setRadarEnabled(false));
+  header.append(title, count, close);
+
+  const sub = document.createElement("div");
+  sub.className = "mc-xray-radar-sub";
+  const items = document.createElement("div");
+  items.className = "mc-xray-radar-items";
+  const footer = document.createElement("div");
+  footer.className = "mc-xray-radar-footer";
+  footer.textContent = "Solo Battle List · sin coordenadas ni pisos";
+  const alert = document.createElement("div");
+  alert.className = "mc-xray-radar-alert";
+  alert.hidden = true;
+  root.append(header, sub, items, footer, alert);
+  document.body.appendChild(root);
+
+  const saved = config.radarPosition;
+  setRadarPosition(saved?.left ?? 18, saved?.top ?? 110, false);
+
+  // Arrastrar la cabecera con mouse o pantalla tactil; no robar clicks al botón cerrar.
+  header.addEventListener("pointerdown", event => {
+    if (event.button !== 0 || event.target === close || close.contains(event.target)) return;
+    if (state.radarDragCleanup) state.radarDragCleanup();
+    const startX = event.clientX, startY = event.clientY;
+    const rect = root.getBoundingClientRect();
+    const originalX = rect.left, originalY = rect.top;
+    function move(e) {
+      setRadarPosition(originalX + e.clientX - startX, originalY + e.clientY - startY, false);
+    }
+    function finish(e) {
+      move(e);
+      state.radarDragCleanup?.();
+      config.radarPosition = clampRadarPosition(
+        parseFloat(root.style.left) || 0, parseFloat(root.style.top) || 0, root
+      );
+      save();
+    }
+    function cleanup() {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", finish);
+      window.removeEventListener("pointercancel", cancel);
+      state.radarDragCleanup = null;
+    }
+    function cancel() { cleanup(); }
+    state.radarDragCleanup = cleanup;
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", cancel);
+    event.preventDefault();
+  });
+  return root;
+}
+
+function showRadarPlayerAlert(entry, root) {
+  const alert = root.querySelector(".mc-xray-radar-alert");
+  if (!alert) return;
+  alert.textContent = `Jugador detectado: ${entry.name}`;
+  alert.hidden = false;
+  state.radarLastAlert = { id: entry.id, name: entry.name, at: Date.now() };
+  if (state.radarToastTimerId != null) window.clearTimeout(state.radarToastTimerId);
+  state.radarToastTimerId = window.setTimeout(() => {
+    alert.hidden = true;
+    state.radarToastTimerId = null;
+  }, 7000);
+}
+
+function watchNewPlayers(entries, root) {
+  const now = Date.now();
+  const present = new Set(entries.map(e => e.id));
+  if (state.radarBaselineDone && config.playerAlertsEnabled) {
+    for (const entry of entries) {
+      if (state.radarSeenIds.has(entry.id) || !isIdentifiedPlayer(entry)) continue;
+      const last = state.radarAlertsAt.get(entry.id) || 0;
+      if (now - last < 60000) continue;
+      state.radarAlertsAt.set(entry.id, now);
+      showRadarPlayerAlert(entry, root);
+    }
+  }
+  state.radarSeenIds = present;
+  state.radarBaselineDone = true;
+  if (state.radarAlertsAt.size > 200) {
+    for (const [id, at] of state.radarAlertsAt) {
+      if (now - at > 120000) state.radarAlertsAt.delete(id);
+    }
+  }
+}
+
+function renderRadar() {
+  if (!state.radarRunning) return;
+  const root = ensureRadar();
+  const snapshot = getBattleListSnapshot();
+  const entries = snapshot.entries;
+  const count = root.querySelector(".mc-xray-radar-count");
+  const sub = root.querySelector(".mc-xray-radar-sub");
+  const items = root.querySelector(".mc-xray-radar-items");
+  if (!count || !sub || !items) return;
+  const playerCount = entries.filter(isIdentifiedPlayer).length;
+  count.textContent = `${entries.length}`;
+  sub.textContent = !snapshot.windowFound ? "Battle List no encontrada" :
+    snapshot.windowVisible ? `Battle abierta · ${playerCount} jugadores identificados` :
+    snapshot.updatesWhileHiddenConfirmed
+      ? `Battle cerrada · cambios confirmados · ${playerCount} jugadores`
+      : `Battle cerrada · filas en DOM, actualización sin confirmar`;
+
+  const previousScroll = items.scrollTop;
+  const ordered = entries.slice().sort((a, b) =>
+    Number(isIdentifiedPlayer(b)) - Number(isIdentifiedPlayer(a))
+  );
+  const fragments = document.createDocumentFragment();
+  if (!ordered.length) {
+    const empty = document.createElement("div");
+    empty.className = "mc-xray-radar-empty";
+    empty.textContent = snapshot.windowFound ? "No hay criaturas en Battle List" : "Abre Battle List para verificar datos";
+    fragments.appendChild(empty);
+  } else {
+    for (const entry of ordered.slice(0, 60)) {
+      const row = document.createElement("div");
+      row.className = "mc-xray-radar-row";
+      row.dataset.kind = isIdentifiedPlayer(entry) ? "player" : "unknown";
+      const line = document.createElement("div");
+      line.className = "mc-xray-radar-line";
+      const dot = document.createElement("span");
+      dot.className = "mc-xray-radar-dot";
+      const name = document.createElement("span");
+      name.className = "mc-xray-radar-name";
+      name.title = entry.name;
+      name.textContent = entry.name;
+      const hp = document.createElement("span");
+      hp.className = "mc-xray-radar-hp";
+      hp.textContent = entry.healthText || "HP ?";
+      line.append(dot, name, hp);
+      const meta = document.createElement("div");
+      meta.className = "mc-xray-radar-meta";
+      meta.textContent = [entry.detail || (isIdentifiedPlayer(entry) ? "Jugador" : "Tipo sin identificar"), `ID ${entry.id}`].join(" · ");
+      row.append(line, meta);
+      if (entry.maxHealth > 0 && entry.health != null) {
+        const track = document.createElement("div");
+        track.className = "mc-xray-radar-track";
+        const fill = document.createElement("div");
+        fill.className = "mc-xray-radar-fill";
+        fill.style.width = `${Math.max(0, Math.min(100, entry.health / entry.maxHealth * 100))}%`;
+        track.appendChild(fill);
+        row.appendChild(track);
+      }
+      fragments.appendChild(row);
+    }
+    if (entries.length > 60) {
+      const extra = document.createElement("div");
+      extra.className = "mc-xray-radar-empty";
+      extra.textContent = `+${entries.length - 60} entradas adicionales`;
+      fragments.appendChild(extra);
+    }
+  }
+  items.replaceChildren(fragments);
+  items.scrollTop = previousScroll;
+  watchNewPlayers(entries, root);
+  state.radarLastRenderAt = Date.now();
+}
+
+function startRadar() {
+  config.radarEnabled = true;
+  save();
+  if (state.radarRunning) return true;
+  state.radarRunning = true;
+  state.radarBaselineDone = false;
+  state.radarSeenIds.clear();
+  try { renderRadar(); }
+  catch (error) { state.lastError = String(error?.message || error); }
+  state.radarTimerId = window.setInterval(() => {
+    try { renderRadar(); }
+    catch (error) { state.lastError = String(error?.message || error); }
+  }, radarRefreshMs);
+  return true;
+}
+
+function stopRadar(options = {}) {
+  state.radarRunning = false;
+  if (state.radarTimerId != null) window.clearInterval(state.radarTimerId);
+  state.radarTimerId = null;
+  if (state.radarToastTimerId != null) window.clearTimeout(state.radarToastTimerId);
+  state.radarToastTimerId = null;
+  state.radarDragCleanup?.();
+  document.getElementById(radarRootId)?.remove();
+  document.getElementById(radarStyleId)?.remove();
+  if (options.persistEnabled !== false) {
+    config.radarEnabled = false;
+    save();
+  }
+  return true;
+}
+
+function setRadarEnabled(enabled) {
+  return enabled ? startRadar() : stopRadar();
+}
+
+function setPlayerAlertsEnabled(enabled) {
+  config.playerAlertsEnabled = !!enabled;
+  save();
+  return config.playerAlertsEnabled;
+}
+
+function inspectRadar() {
+  const battle = getBattleListSnapshot();
+  return {
+    enabled: state.radarRunning,
+    entries: battle.entries.map(e => ({
+      ...e,
+      kind: isIdentifiedPlayer(e) ? "player" : "unknown",
+    })),
+    count: battle.entries.length,
+    identifiedPlayers: battle.entries.filter(isIdentifiedPlayer).length,
+    windowVisible: battle.windowVisible,
+    updatesWhileHiddenConfirmed: battle.updatesWhileHiddenConfirmed,
+    lastChangedWhileHiddenAt: battle.lastChangedWhileHiddenAt,
+    alertsEnabled: config.playerAlertsEnabled,
+    lastAlert: state.radarLastAlert,
+    note: "Solo Battle List; no detecta coordenadas, criaturas ocultas ni otros pisos.",
+  };
+}
+
   function startOverlay() {
     if (state.running) return false;
     state.running = true;
@@ -1885,6 +2223,9 @@ window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot
       dataError: state.lastError,
       config: { ...config },
       overlayRunning: state.running,
+      radarRunning: state.radarRunning,
+      radarLastRenderAt: state.radarLastRenderAt,
+      radarLastAlert: state.radarLastAlert,
     };
   }
 
@@ -1895,6 +2236,13 @@ window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot
     getOverlayCreatures,
     getBattleListCreatures,
     inspectBattleList,
+    getRadarEntries,
+    inspectRadar,
+    startRadar,
+    stopRadar,
+    setRadarEnabled,
+    setPlayerAlertsEnabled,
+    setRadarPosition,
     startOverlay,
     stopOverlay,
     setOverlayEnabled,
@@ -1914,7 +2262,15 @@ window.__minibiaCopilotBundle.installXrayModule = function installXrayModule(bot
 
   if (config.overlayEnabled) startOverlay();
   else clearOverlay();
-  bot.addCleanup?.(() => stopOverlay({ persistEnabled: false }));
+  if (config.radarEnabled) startRadar();
+  else {
+    document.getElementById(radarRootId)?.remove();
+    document.getElementById(radarStyleId)?.remove();
+  }
+  bot.addCleanup?.(() => {
+    stopOverlay({ persistEnabled: false });
+    stopRadar({ persistEnabled: false });
+  });
 };
 window.__minibiaCopilotBundle = window.__minibiaCopilotBundle || {};
 
@@ -11576,6 +11932,16 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
   function refreshXrayStatus() {
     const status = bot.xray?.status?.();
     const me = status?.playerPosition || null;
+    const radarToggle = document.getElementById("minibia-copilot-xray-radar-enabled");
+    const alertsToggle = document.getElementById("minibia-copilot-xray-player-alerts");
+    const radarLabel = document.getElementById("minibia-copilot-xray-radar-status");
+    if (radarToggle) radarToggle.checked = !!status?.radarRunning;
+    if (alertsToggle) alertsToggle.checked = !!status?.config?.playerAlertsEnabled;
+    if (radarLabel) {
+      const count = status?.battleListCreatures?.length ?? 0;
+      const mode = status?.battleListWindowVisible ? "Battle abierta" : "Battle cerrada";
+      radarLabel.textContent = `${status?.radarRunning ? "Radar activo" : "Radar inactivo"} · ${count} entradas · ${mode}`;
+    }
     const overlayButton = document.getElementById("minibia-copilot-xray-overlay-toggle");
     const overlayLabel = document.getElementById("minibia-copilot-xray-overlay-status");
     const floorSelect = document.getElementById("minibia-copilot-xray-floor-select");
@@ -13851,6 +14217,16 @@ function refreshAntiBotStatus() {
 
           <div class="mc-section">
             <div class="mc-label">X-Ray</div>
+            <label class="mc-toggle">
+              <input type="checkbox" id="minibia-copilot-xray-radar-enabled" />
+              <span>Mostrar radar flotante (Battle List)</span>
+            </label>
+            <label class="mc-toggle">
+              <input type="checkbox" id="minibia-copilot-xray-player-alerts" />
+              <span>Avisar al entrar nuevos jugadores identificados</span>
+            </label>
+            <div class="mc-small-note" id="minibia-copilot-xray-radar-status">Radar inactivo</div>
+            <div class="mc-small-note">El radar se arrastra desde su cabecera; ciérralo con ×. Solo muestra entradas de Battle List, aunque esté oculta.</div>
             <button type="button" class="mc-small-button" id="minibia-copilot-xray-overlay-toggle">Disable Overlay</button>
             <div class="mc-small-note" id="minibia-copilot-xray-overlay-status">Overlay: on</div>
             <label class="mc-field" for="minibia-copilot-xray-floor-select">
@@ -14390,6 +14766,8 @@ function refreshAntiBotStatus() {
     const panicReturnInput = panel.querySelector("#minibia-copilot-panic-return");
     const panicTrustedInput = panel.querySelector("#minibia-copilot-panic-trusted-input");
     const panicTrustedAddButton = panel.querySelector("#minibia-copilot-panic-trusted-add");
+    const xrayRadarToggle = panel.querySelector("#minibia-copilot-xray-radar-enabled");
+    const xrayPlayerAlertsToggle = panel.querySelector("#minibia-copilot-xray-player-alerts");
     const xrayOverlayButton = panel.querySelector("#minibia-copilot-xray-overlay-toggle");
     const xrayFloorSelect = panel.querySelector("#minibia-copilot-xray-floor-select");
     const collapseButton = panel.querySelector("#minibia-copilot-collapse");
@@ -15281,6 +15659,19 @@ function refreshAntiBotStatus() {
       });
     }
 
+    if (xrayRadarToggle) {
+      xrayRadarToggle.addEventListener("change", () => {
+        bot.xray?.setRadarEnabled?.(xrayRadarToggle.checked);
+        refreshXrayStatus();
+      });
+    }
+    if (xrayPlayerAlertsToggle) {
+      xrayPlayerAlertsToggle.addEventListener("change", () => {
+        bot.xray?.setPlayerAlertsEnabled?.(xrayPlayerAlertsToggle.checked);
+        refreshXrayStatus();
+      });
+    }
+
     if (xrayOverlayButton) {
       xrayOverlayButton.addEventListener("click", () => {
         const enabled = !!bot.xray?.status?.().config?.overlayEnabled;
@@ -15369,6 +15760,7 @@ function refreshAntiBotStatus() {
       refreshAutoHealStatus();
       refreshRuneStatus();
       refreshAutoEatStatus();
+      refreshXrayStatus();
     }, 1000);
     bot.addCleanup(() => {
       window.clearInterval(snapshotTimerId);
