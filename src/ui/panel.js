@@ -57,6 +57,16 @@ window.__minibiaCopilotBundle.installPanel = function installPanel(bot) {
   function refreshXrayStatus() {
     const status = bot.xray?.status?.();
     const me = status?.playerPosition || null;
+    const radarToggle = document.getElementById("minibia-copilot-xray-radar-enabled");
+    const alertsToggle = document.getElementById("minibia-copilot-xray-player-alerts");
+    const radarLabel = document.getElementById("minibia-copilot-xray-radar-status");
+    if (radarToggle) radarToggle.checked = !!status?.radarRunning;
+    if (alertsToggle) alertsToggle.checked = !!status?.config?.playerAlertsEnabled;
+    if (radarLabel) {
+      const count = status?.battleListCreatures?.length ?? 0;
+      const mode = status?.battleListWindowVisible ? "Battle abierta" : "Battle cerrada";
+      radarLabel.textContent = `${status?.radarRunning ? "Radar activo" : "Radar inactivo"} · ${count} entradas · ${mode}`;
+    }
     const overlayButton = document.getElementById("minibia-copilot-xray-overlay-toggle");
     const overlayLabel = document.getElementById("minibia-copilot-xray-overlay-status");
     const floorSelect = document.getElementById("minibia-copilot-xray-floor-select");
@@ -2332,6 +2342,16 @@ function refreshAntiBotStatus() {
 
           <div class="mc-section">
             <div class="mc-label">X-Ray</div>
+            <label class="mc-toggle">
+              <input type="checkbox" id="minibia-copilot-xray-radar-enabled" />
+              <span>Mostrar radar flotante (Battle List)</span>
+            </label>
+            <label class="mc-toggle">
+              <input type="checkbox" id="minibia-copilot-xray-player-alerts" />
+              <span>Avisar al entrar nuevos jugadores identificados</span>
+            </label>
+            <div class="mc-small-note" id="minibia-copilot-xray-radar-status">Radar inactivo</div>
+            <div class="mc-small-note">El radar se arrastra desde su cabecera; ciérralo con ×. Solo muestra entradas de Battle List, aunque esté oculta.</div>
             <button type="button" class="mc-small-button" id="minibia-copilot-xray-overlay-toggle">Disable Overlay</button>
             <div class="mc-small-note" id="minibia-copilot-xray-overlay-status">Overlay: on</div>
             <label class="mc-field" for="minibia-copilot-xray-floor-select">
@@ -2871,6 +2891,8 @@ function refreshAntiBotStatus() {
     const panicReturnInput = panel.querySelector("#minibia-copilot-panic-return");
     const panicTrustedInput = panel.querySelector("#minibia-copilot-panic-trusted-input");
     const panicTrustedAddButton = panel.querySelector("#minibia-copilot-panic-trusted-add");
+    const xrayRadarToggle = panel.querySelector("#minibia-copilot-xray-radar-enabled");
+    const xrayPlayerAlertsToggle = panel.querySelector("#minibia-copilot-xray-player-alerts");
     const xrayOverlayButton = panel.querySelector("#minibia-copilot-xray-overlay-toggle");
     const xrayFloorSelect = panel.querySelector("#minibia-copilot-xray-floor-select");
     const collapseButton = panel.querySelector("#minibia-copilot-collapse");
@@ -3762,6 +3784,19 @@ function refreshAntiBotStatus() {
       });
     }
 
+    if (xrayRadarToggle) {
+      xrayRadarToggle.addEventListener("change", () => {
+        bot.xray?.setRadarEnabled?.(xrayRadarToggle.checked);
+        refreshXrayStatus();
+      });
+    }
+    if (xrayPlayerAlertsToggle) {
+      xrayPlayerAlertsToggle.addEventListener("change", () => {
+        bot.xray?.setPlayerAlertsEnabled?.(xrayPlayerAlertsToggle.checked);
+        refreshXrayStatus();
+      });
+    }
+
     if (xrayOverlayButton) {
       xrayOverlayButton.addEventListener("click", () => {
         const enabled = !!bot.xray?.status?.().config?.overlayEnabled;
@@ -3850,6 +3885,7 @@ function refreshAntiBotStatus() {
       refreshAutoHealStatus();
       refreshRuneStatus();
       refreshAutoEatStatus();
+      refreshXrayStatus();
     }, 1000);
     bot.addCleanup(() => {
       window.clearInterval(snapshotTimerId);
